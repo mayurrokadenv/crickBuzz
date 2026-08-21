@@ -5,7 +5,7 @@ import type { FixtureScorecard } from "../components/MatchDetails/FixtureScoreca
 import api from "./fixturesservice";
 
 
-const API_BASE_URL = "https://localhost:62965/api";
+const API_BASE_URL = "http://nvcricbuz.runasp.net/api"
 
 export const getCurrentMatches = async () => {
   const response = await axios.get(

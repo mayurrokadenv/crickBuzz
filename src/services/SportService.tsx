@@ -37,7 +37,7 @@ export interface CreateSportRoleRequest{
   sportId: string;
 }
 
-const API_BASE_URL = "https://localhost:62965/api"; 
+const API_BASE_URL = "http://nvcricbuz.runasp.net/api";
 
 export const getSports = async (): Promise<Sport[]> => {
   try {

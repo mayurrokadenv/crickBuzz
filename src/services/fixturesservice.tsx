@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "https://localhost:62965/api";
+const API_BASE_URL = "http://nvcricbuz.runasp.net/api"
 
 export interface SportRole {
     roleId: string;

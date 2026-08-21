@@ -123,7 +123,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
         }
 
         try {
-            const response = await fetch("https://localhost:62965/api/fixtures", {
+            const response = await fetch("http://nvcricbuz.runasp.net/api/fixtures", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

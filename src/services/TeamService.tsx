@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { ResponseResult } from "./SportService";
 
-const API_BASE_URL = "https://localhost:62965/api"; 
+const API_BASE_URL ="http://nvcricbuz.runasp.net/api"
 export interface CreateTeamRequest {
     name: string;
     sportId: string;

@@ -56,7 +56,7 @@ export interface CommentaryEntry {
     sportName: string;
 }
 
-const API_URL = "https://localhost:62965/api";
+const API_URL = "http://nvcricbuz.runasp.net/api";
 
 export async function getLiveMatches(): Promise<FeedingMatch[]> {
     try {

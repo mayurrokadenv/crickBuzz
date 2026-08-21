@@ -21,7 +21,7 @@ export interface AdminLoginResponse {
     role: string;
 }
 
-const API_URL = "https://localhost:62965/api/admin";
+const API_URL = "http://nvcricbuz.runasp.net/api/admin"
 
 function getAuthHeaders() {
 
