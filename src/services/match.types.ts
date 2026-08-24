@@ -7,4 +7,5 @@ export interface FeedingMatchs {
     score: string;
     stage: string;
     progress: string;
+    totalOvers?: string;
 }

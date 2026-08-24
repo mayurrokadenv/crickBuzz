@@ -227,7 +227,7 @@ function MatchDetailsPage() {
         const response = await getFixtureMatchDetails(matchId);
 
         if (!ignore) {
-          setFixtureScorecard(response);
+          setFixtureScorecard(response as unknown as FixtureScorecard);
         }
       } catch (error) {
         console.error("Failed to load fixture scorecard", error);
@@ -359,7 +359,7 @@ function MatchDetailsPage() {
           );
         }
 
-        return <ScoreCard scorecards={scorecard.scoreCard} />;
+        return <ScoreCard scorecards={scorecard.scoreCard as any} />;
       }
 
       case "Commentary": {

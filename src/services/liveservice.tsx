@@ -203,7 +203,7 @@ export async function postCommentary(fixtureId: string, data: CommentaryRequest)
 
 export const updateScoreFixtures = async (
     fixtureId: string,
-    data: { side: 0 | 1; runsDelta?: number; wicketsDelta?: number }
+    data: { side: 0 | 1; runsDelta?: number; wicketsDelta?: number; overs?: string }
 ) => {
     const res = await fetch(`${API_URL}/fixtures/${fixtureId}/score`, {
         method: 'PATCH',
