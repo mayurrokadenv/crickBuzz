@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://nvcricbuz.runasp.net',
+        target: 'https://nvcricbuz.runasp.net',
         changeOrigin: true,
       },
       '/hubs': {

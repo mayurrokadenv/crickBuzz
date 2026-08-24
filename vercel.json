@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "http://nvcricbuz.runasp.net/api/:match*"
+      "destination": "https://nvcricbuz.runasp.net/api/:match*"
     },
     {
       "source": "/hubs/:match*",
