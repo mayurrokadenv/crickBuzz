@@ -405,10 +405,10 @@ function MatchDetailsPage() {
       // SQUADS
       // -------------------------------------------------------
 
-      case "Squads":
-        return (
-          <div className="match-details-page__state">Squads coming next...</div>
-        );
+      // case "Squads":
+      //   return (
+      //     <div className="match-details-page__state">Squads coming next...</div>
+      //   );
 
       default:
         return null;

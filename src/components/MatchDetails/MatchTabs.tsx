@@ -6,7 +6,7 @@ export type MatchTab =
   | "Scorecard"
   | "Commentary"
   | "Stats"
-  | "Squads";
+  // | "Squads";
 
 type MatchTabsProps = {
   activeTab: MatchTab;
@@ -23,7 +23,7 @@ function MatchTabs({
     "Scorecard",
     "Commentary",
     "Stats",
-    "Squads"
+    // "Squads"
   ];
 
   return (
