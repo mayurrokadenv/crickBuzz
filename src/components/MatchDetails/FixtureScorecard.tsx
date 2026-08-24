@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import "./scorecard.css"; // <-- external CSS
+import "./ScoreCard.css"; // <-- external CSS
 import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
 
 export type CommentaryEntry = {
