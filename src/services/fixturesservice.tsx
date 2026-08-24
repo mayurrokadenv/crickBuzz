@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://nvcricbuz.runasp.net/api"
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export interface SportRole {
     roleId: string;

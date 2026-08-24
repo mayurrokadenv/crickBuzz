@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/:match*",
+      "destination": "http://nvcricbuz.runasp.net/api/:match*"
+    },
+    {
+      "source": "/hubs/:match*",
+      "destination": "https://nvcricbuz.runasp.net/hubs/:match*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

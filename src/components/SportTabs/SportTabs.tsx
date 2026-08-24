@@ -23,7 +23,7 @@ const SportTabs = ({
 
     const loadSports = async () => {
         try {
-            const response = await fetch("http://nvcricbuz.runasp.net/api/sports");
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "/api"}/sports`);
 
             if (!response.ok) {
                 throw new Error("Unable to fetch sports.");

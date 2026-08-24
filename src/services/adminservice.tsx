@@ -21,7 +21,7 @@ export interface AdminLoginResponse {
     role: string;
 }
 
-const API_URL = "http://nvcricbuz.runasp.net/api/admin"
+const API_URL = `${import.meta.env.VITE_API_BASE_URL || "/api"}/admin`;
 
 function getAuthHeaders() {
 

@@ -56,7 +56,7 @@ export interface CommentaryEntry {
     sportName: string;
 }
 
-const API_URL = "http://nvcricbuz.runasp.net/api";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function getLiveMatches(): Promise<FeedingMatch[]> {
     try {

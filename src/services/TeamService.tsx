@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { ResponseResult } from "./SportService";
 
-const API_BASE_URL ="http://nvcricbuz.runasp.net/api"
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export interface CreateTeamRequest {
     name: string;
     sportId: string;
