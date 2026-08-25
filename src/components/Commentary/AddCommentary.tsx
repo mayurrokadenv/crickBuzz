@@ -378,7 +378,9 @@ function AddCommentary({
       const res = await liveFixtures();
       setLiveFixturesList(res);
       if (selectedFixtureId) {
-        const fixture = res.find((f) => f.id === selectedFixtureId);
+        const fixture = res.find(
+          (f: { id: string }) => f.id === selectedFixtureId,
+        );
         if (fixture && matchTeams.length === 2)
           updateLocalScoresAndOvers(fixture, matchTeams);
       }
@@ -665,7 +667,6 @@ function AddCommentary({
     setPostStatus("idle");
 
     try {
-      debugger;
       // 1. Log the commentary entry (feed)
       await postCommentary(selectedFixtureId, commentaryPayload);
 
