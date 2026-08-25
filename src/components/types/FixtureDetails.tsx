@@ -1,26 +1,28 @@
 export interface FixtureDetailsDto {
-  awayOvers: string;
-  homeOvers: string;
+  awayOvers: any;
+  homeOvers: any;
   id: string;
   homeTeamId: string;
   homeTeamName: string;
   awayTeamId: string;
   awayTeamName: string;
   sport: string;
+  ball?: string;
   scheduledAtUtc: string;
   status: string;
   phase: string | null;
   homeScore: number;
-  homeWickets: number;
+  homeWickets: number | null;
   awayScore: number;
-  awayWickets: number;
+  awayWickets: number | null;
   commentary: CommentaryDto[];
   topPerformers: TopPerformerDto[];
-  totalOvers: string;
+  totalOvers?: string;
   sportId: string;
 }
 
 export interface CommentaryDto {
+  ball: any;
   id: string;
   fixtureId: string;
   side: string;

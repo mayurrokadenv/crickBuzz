@@ -283,7 +283,7 @@ function AddCommentary({
   );
 
   const [allTeams, setAllTeams] = useState<Team[]>([]);
-  const [liveFixturesList,  setLiveFixturesList] = useState<LiveFixture[]>([]);
+  const [liveFixturesList, setLiveFixturesList] = useState<LiveFixture[]>([]);
   const [matchTeams, setMatchTeams] = useState<Team[]>([]);
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(
     null,
@@ -378,7 +378,7 @@ function AddCommentary({
       const res = await liveFixtures();
       setLiveFixturesList(res);
       if (selectedFixtureId) {
-        const fixture = res.find((f: { id: string; }) => f.id === selectedFixtureId);
+        const fixture = res.find((f) => f.id === selectedFixtureId);
         if (fixture && matchTeams.length === 2)
           updateLocalScoresAndOvers(fixture, matchTeams);
       }
@@ -658,12 +658,14 @@ function AddCommentary({
       playerId: selectedPlayerId,
       action: actionValue,
       note: `${selectedActionType.toUpperCase()}: ${note || ""}${extraNoteSuffix}`.trim(),
+      currentball: newOvers ?? overs[selectedTeamName] ?? "0.0",
     };
 
     setIsPosting(true);
     setPostStatus("idle");
 
     try {
+      debugger;
       // 1. Log the commentary entry (feed)
       await postCommentary(selectedFixtureId, commentaryPayload);
 

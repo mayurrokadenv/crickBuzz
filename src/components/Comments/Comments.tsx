@@ -1,6 +1,7 @@
 import "./Comments.css";
 
 interface CommentData {
+  ball?: string;
   id: string;
   time: string;
   type: string;
@@ -17,7 +18,7 @@ interface CommentsProps {
 function Comments({ comment }: CommentsProps) {
   return (
     <article className="comment">
-      <div className="comment__time">{comment.time}</div>
+      {comment.ball && <div className="comment__time">{comment.ball}</div>}
 
       <div className="comment__dot"></div>
 
