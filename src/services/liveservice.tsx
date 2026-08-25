@@ -58,7 +58,7 @@ export interface CommentaryEntry {
   sportName: string;
 }
 
-const API_URL = "https://nvcricbuz.runasp.net/api";
+const API_URL = "https://crick-buzz-liard.vercel.app/api";
 
 export async function getLiveMatches(): Promise<FeedingMatch[]> {
   try {
