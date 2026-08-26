@@ -1,13 +1,24 @@
 .registration-container {
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     justify-content: center;
-    align-items: center;
+    align-items: stretch;
     background: #020817;
     padding: 24px;
+    box-sizing: border-box;
+}
+
+.registration-container > .header {
+    /* width: 100%; */
+    margin: 0;
+    margin-left: 3%;
+    margin-right: 3%;
+    box-sizing: border-box;
 }
 
 .registration-card {
+    align-self: center;
     width: 100%;
     max-width: 480px;
     background: #111827;
@@ -15,6 +26,8 @@
     border-radius: 16px;
     padding: 32px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    box-sizing: border-box;
+    margin: 20px 0;
 }
 
 .registration-title {
