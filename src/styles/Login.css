@@ -1,14 +1,24 @@
 .login-container {
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     justify-content: center;
-    align-items: center;
+    align-items: stretch;
     background-color: #020817;
     padding: 20px;
     box-sizing: border-box;
 }
 
+.login-container > .header {
+    /* width: 100%;   */
+    box-sizing: border-box;
+    margin: 0;
+    margin-left: 3%;
+    margin-right: 3%;
+}
+
 .login-card {
+    align-self: center;
     width: 100%;
     max-width: 420px;
     background-color: #111827;
@@ -17,6 +27,7 @@
     border-radius: 16px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
     box-sizing: border-box;
+    margin: auto 0;
 }
 
 .login-title {
@@ -109,4 +120,71 @@
     .login-card {
         padding: 28px 24px;
     }
+}
+
+.login-register-link {
+    display: block;
+    margin-top: 16px;
+    text-align: center;
+    font-size: 14px;
+    color: #94a3b8;
+    cursor: pointer;
+}
+
+.login-register-link a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.login-register-link a:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.required {
+    color: #f87171;
+}
+
+.password-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.password-input {
+    padding-right: 45px;
+}
+
+.show-password-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 30px;
+    height: 30px;
+
+    padding: 0;
+    border: none;
+    background: transparent;
+
+    color: #94a3b8;
+    cursor: pointer;
+
+    transition: color 0.2s ease;
+}
+
+.show-password-btn:hover {
+    color: #3b82f6;
+}
+
+.show-password-btn:focus {
+    outline: none;
+}
+
+.show-password-btn svg {
+    display: block;
 }
