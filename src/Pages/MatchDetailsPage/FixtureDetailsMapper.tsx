@@ -58,6 +58,29 @@ function getFixtureActionRuns(action: string): number {
   }
 }
 
+function getFixtureBallResult(action: string): string {
+  switch (action.toLowerCase()) {
+    case "six":
+      return "6";
+    case "four":
+      return "4";
+    case "single":
+      return "1";
+    case "two":
+      return "2";
+    case "three":
+      return "3";
+    case "wicket":
+      return "W";
+    case "wide":
+      return "Wd";
+    case "no_ball":
+      return "Nb";
+    default:
+      return "0";
+  }
+}
+
 export function mapFixtureMatchDetails(
   response: FixtureDetailsDto,
 ): MatchDetailsModel {
@@ -158,6 +181,29 @@ export function mapFixtureMatchDetails(
       (item) => !["wide", "no_ball"].includes(item.action.toLowerCase()),
     ).length,
   };
+  const recentOvers = (() => {
+    const grouped = new Map<string, string[]>();
+
+    sortedCommentary.forEach((item) => {
+      const action = item.action.toLowerCase();
+      const ball = String(item.ball ?? "");
+      const over = ball.includes(".") ? ball.split(".")[0] : "recent";
+      const results = grouped.get(over) ?? [];
+      const result = getFixtureBallResult(item.action);
+      if (["wide", "no_ball"].includes(action) && results.length > 0) {
+        results[results.length - 1] =
+          `${results[results.length - 1]} ${result}`;
+      } else {
+        results.push(result);
+      }
+      grouped.set(over, results);
+    });
+
+    return Array.from(grouped.values())
+      .slice(-3)
+      .map((over) => over.join(" "))
+      .join(" | ");
+  })();
 
   return {
     source: "fixture",
@@ -304,7 +350,7 @@ export function mapFixtureMatchDetails(
 
       latestPerformance: [],
 
-      recentOvsStats: "",
+      recentOvsStats: recentOvers,
 
       event: "",
 

@@ -9,6 +9,29 @@ type Props = {
   fixtureId?: string;
 };
 
+function getBallResult(action: string): string {
+  switch (action.toLowerCase()) {
+    case "six":
+      return "6";
+    case "four":
+      return "4";
+    case "single":
+      return "1";
+    case "two":
+      return "2";
+    case "three":
+      return "3";
+    case "wicket":
+      return "W";
+    case "wide":
+      return "Wd";
+    case "no_ball":
+      return "Nb";
+    default:
+      return "•";
+  }
+}
+
 function NVianLiveSummary({ fixtureId }: Props) {
   const [fixture, setFixture] = useState<FixtureDetailsDto | null>(null);
   const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
@@ -66,6 +89,29 @@ function NVianLiveSummary({ fixtureId }: Props) {
   ).length;
   const score = realtime?.homeScore ?? fixture.homeScore;
   const wickets = realtime?.homeWickets ?? fixture.homeWickets ?? 0;
+  const recentOvers = (() => {
+    const grouped = new Map<string, string[]>();
+
+    comments
+      .slice()
+      .sort(
+        (first, second) =>
+          new Date(first.createdAtUtc).getTime() -
+          new Date(second.createdAtUtc).getTime(),
+      )
+      .forEach((comment) => {
+        const ball = String(comment.ball ?? "");
+        const over = ball.includes(".") ? ball.split(".")[0] : "recent";
+        const results = grouped.get(over) ?? [];
+        results.push(getBallResult(comment.action));
+        grouped.set(over, results);
+      });
+
+    return Array.from(grouped.values())
+      .slice(-3)
+      .map((over) => over.join(" "))
+      .join(" | ");
+  })();
 
   return (
     <section className="nvian-live-summary">
@@ -82,6 +128,10 @@ function NVianLiveSummary({ fixtureId }: Props) {
             ? `${latestWicket.playerName} (${score}/${wickets})`
             : "No wicket yet"}
         </strong>
+      </div>
+      <div className="nvian-live-summary__item nvian-live-summary__item--recent">
+        <span>Recent Overs</span>
+        <strong>{recentOvers || "No overs yet"}</strong>
       </div>
     </section>
   );
