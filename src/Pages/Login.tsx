@@ -3,6 +3,7 @@ import { loginAdmin } from "../services/adminservice";
 import { useAuth } from "../context/AuthContext";
 import "../styles/Login.css";
 import { useNavigate } from "react-router-dom";
+import Header from "../components/Header/Header";
 
 function Login() {
     const [formData, setFormData] = useState({
@@ -33,8 +34,28 @@ function Login() {
     ) => {
         e.preventDefault();
 
-        if (!formData.email.trim() || !formData.password.trim()) {
-            setError("Email and password are required");
+        const email = formData.email.trim();
+        const password = formData.password.trim();
+
+        const companyEmailRegex = /^[a-zA-Z0-9._%+-]+@newvision-software\.com$/i;
+
+        if (!email && !password) {
+            setError("Email and Password are required");
+            return;
+        }
+
+        if (!email) {
+            setError("Email is required");
+            return;
+        }
+
+        if (!companyEmailRegex.test(email)) {
+            setError("Please use your company email (@newvision-software.com)");
+            return;
+        }
+
+        if (!password) {
+            setError("Password is required");
             return;
         }
 
@@ -63,6 +84,8 @@ function Login() {
 
     return (
         <main className="login-container">
+            <Header />
+
             <section className="login-card">
 
                 <h1 className="login-title">
@@ -118,6 +141,10 @@ function Login() {
                     >
                         {loading ? "Logging in..." : "Login"}
                     </button>
+
+                    <span className="login-register-link">
+                        Don't have an account ? <a href="/register">Register</a>
+                    </span>
 
                 </form>
 

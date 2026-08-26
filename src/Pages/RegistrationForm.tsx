@@ -4,6 +4,7 @@ import { registerAdmin } from "../services/adminservice";
 import { useNavigate } from "react-router-dom";
 import { showError, showSuccess } from "../services/common/AlertService";
 import { useRegistration } from "../context/RegistrationContext";
+import Header from "../components/Header/Header";
 
 function RegistrationForm() {
     const {
@@ -129,6 +130,8 @@ function RegistrationForm() {
 
     return (
         <div className="registration-container">
+            <Header />
+
             <div className="registration-card">
 
                 <h1 className="registration-title">
@@ -254,7 +257,7 @@ function RegistrationForm() {
                     </button>
 
                     <p className="registration-login-link">
-                        Already registered?{" "}
+                        Already registered ?{" "}
                         <button
                             type="button"
                             className="registration-login-btn"
