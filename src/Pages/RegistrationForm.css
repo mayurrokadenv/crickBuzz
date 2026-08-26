@@ -149,3 +149,47 @@
     color: #60a5fa;
     text-decoration: underline;
 }
+
+.password-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.password-input {
+    padding-right: 45px;
+}
+
+.show-password-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 30px;
+    height: 30px;
+
+    padding: 0;
+    border: none;
+    background: transparent;
+
+    color: #94a3b8;
+    cursor: pointer;
+
+    transition: color 0.2s ease;
+}
+
+.show-password-btn:hover {
+    color: #3b82f6;
+}
+
+.show-password-btn:focus {
+    outline: none;
+}
+
+.show-password-btn svg {
+    display: block;
+}
