@@ -1,6 +1,7 @@
 import React, { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { FeedingMatchs } from "../../services/match.types";
 import { getLiveMatches } from "../../services/liveservice";
+import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
 import "./FeedingMatch.css";
 
 interface FeedingMatchProps {
@@ -91,6 +92,20 @@ const FeedingMatchComponent = ({
     return match ?? feedingMatches[0];
   }, [selectedMatchId, feedingMatches]);
 
+  const { scoreByMatch } = useScoreUpdateFeed(selectedMatch?.fixtureId ?? "");
+  const realtime = selectedMatch?.fixtureId
+    ? scoreByMatch[selectedMatch.fixtureId]
+    : undefined;
+  const displayedMatch =
+    realtime && selectedMatch
+      ? {
+          ...selectedMatch,
+          score: `${realtime.homeScore}/${realtime.homeWickets ?? 0} (${realtime.homeOvers ?? selectedMatch.homeOvers ?? "0.0"})`,
+          homeOvers: realtime.homeOvers ?? selectedMatch.homeOvers,
+          awayOvers: realtime.awayOvers ?? selectedMatch.awayOvers,
+        }
+      : selectedMatch;
+
   const handleMatchChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const newId = Number(e.target.value);
     console.log("FeedingMatch: Match changed to ID:", newId);
@@ -136,12 +151,12 @@ const FeedingMatchComponent = ({
           ))}
         </select>
       </div>
-      {selectedMatch && (
+      {displayedMatch && (
         <div className="match-status">
-          <span className="stage">{selectedMatch.stage}</span>
+          <span className="stage">{displayedMatch.stage}</span>
           <span className="separator">•</span>
-          <span className="progress">{selectedMatch.progress}</span>
-          <span className="score">{selectedMatch.score}</span>
+          <span className="progress">{displayedMatch.progress}</span>
+          <span className="score">{displayedMatch.score}</span>
         </div>
       )}
     </div>

@@ -1,0 +1,40 @@
+.nvian-live-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 0 20px;
+  background: #181c24;
+  border: 1px solid #2b3140;
+  border-radius: 12px;
+}
+
+.nvian-live-summary__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(142, 152, 179, 0.2);
+}
+
+.nvian-live-summary__item span {
+  color: #b8c4dd;
+}
+
+.nvian-live-summary__item strong {
+  color: #f2f5fb;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .nvian-live-summary__item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .nvian-live-summary__item strong {
+    text-align: left;
+  }
+}

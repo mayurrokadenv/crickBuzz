@@ -11,8 +11,10 @@ export interface LiveMatchResponse {
   status: string;
   homeScore: number;
   homeWickets: number;
+  homeOvers?: string;
   awayScore: number;
   awayWickets: number;
+  awayOvers?: string;
 }
 
 export interface FeedingMatch {
@@ -23,6 +25,8 @@ export interface FeedingMatch {
   score: string;
   stage: string;
   progress: string;
+  homeOvers?: string;
+  awayOvers?: string;
 }
 
 export interface CommentaryRequest {
@@ -91,7 +95,7 @@ function mapLiveMatchesToFeedingMatches(
     let progress = "";
 
     if (match.sport.toLowerCase() === "cricket") {
-      score = `${match.homeScore}/${match.homeWickets} - ${match.awayScore}/${match.awayWickets}`;
+      score = `${match.homeScore}/${match.homeWickets} (${match.homeOvers ?? "0.0"})`;
       stage = match.status === "Live" ? "Live" : "Completed";
       progress = getCricketProgress(match);
     } else if (match.sport.toLowerCase() === "football") {
@@ -106,12 +110,15 @@ function mapLiveMatchesToFeedingMatches(
 
     return {
       id: index + 1,
+      fixtureId: match.id,
       sport: match.sport,
       team1: match.homeTeamName,
       team2: match.awayTeamName,
       score: score,
       stage: stage,
       progress: progress,
+      homeOvers: match.homeOvers,
+      awayOvers: match.awayOvers,
     };
   });
 }
@@ -148,12 +155,15 @@ export async function getLiveMatchesWithOriginalIds(): Promise<FeedingMatch[]> {
     console.log("Fetched live matches:", data);
     return data.map((match) => ({
       id: parseInt(match.id.substring(0, 8), 16),
+      fixtureId: match.id,
       sport: match.sport,
       team1: match.homeTeamName,
       team2: match.awayTeamName,
-      score: `${match.homeScore}/${match.homeWickets} - ${match.awayScore}/${match.awayWickets}`,
+      score: `${match.homeScore}/${match.homeWickets} (${match.homeOvers ?? "0.0"})`,
       stage: match.status,
       progress: match.status === "Live" ? "In Progress" : "Completed",
+      homeOvers: match.homeOvers,
+      awayOvers: match.awayOvers,
     }));
   } catch (error) {
     console.error("Error fetching live matches:", error);

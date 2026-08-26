@@ -41,6 +41,23 @@ function calculateRunRate(score: number, oversValue: unknown): number {
   return legalBalls > 0 ? Number(((score / legalBalls) * 6).toFixed(2)) : 0;
 }
 
+function getFixtureActionRuns(action: string): number {
+  switch (action.toLowerCase()) {
+    case "single":
+      return 1;
+    case "two":
+      return 2;
+    case "three":
+      return 3;
+    case "four":
+      return 4;
+    case "six":
+      return 6;
+    default:
+      return 0;
+  }
+}
+
 export function mapFixtureMatchDetails(
   response: FixtureDetailsDto,
 ): MatchDetailsModel {
@@ -95,9 +112,52 @@ export function mapFixtureMatchDetails(
             teamName: item.side,
             runsScored: 0,
           }));
-  const batters = batterSource
+  const latestCommentaryPlayerId = [...fixtureCommentary].sort(
+    (first, second) =>
+      new Date(second.createdAtUtc).getTime() -
+      new Date(first.createdAtUtc).getTime(),
+  )[0]?.playerId;
+  const orderedBatterSource = latestCommentaryPlayerId
+    ? [...batterSource].sort((first, second) => {
+        if (first.playerId === latestCommentaryPlayerId) return -1;
+        if (second.playerId === latestCommentaryPlayerId) return 1;
+        return 0;
+      })
+    : batterSource;
+  const batters = orderedBatterSource
     .slice(0, 2)
     .map((performer) => mapFixtureBatter(performer, fixtureCommentary));
+  const sortedCommentary = [...fixtureCommentary].sort(
+    (first, second) =>
+      new Date(first.createdAtUtc).getTime() -
+      new Date(second.createdAtUtc).getTime(),
+  );
+  let lastWicketIndex = -1;
+  for (let index = sortedCommentary.length - 1; index >= 0; index -= 1) {
+    if (sortedCommentary[index].action.toLowerCase() === "wicket") {
+      lastWicketIndex = index;
+      break;
+    }
+  }
+  const lastWicket =
+    lastWicketIndex >= 0 ? sortedCommentary[lastWicketIndex] : null;
+  const lastWicketNote = lastWicket?.note?.trim();
+  const lastWicketDescription = lastWicket
+    ? lastWicketNote &&
+      lastWicketNote.replace(/[:\s]/g, "").toLowerCase() !== "wicket"
+      ? lastWicketNote
+      : `${lastWicket.playerName} dismissed (${response.homeScore}/${response.homeWickets ?? 0})`
+    : "No wicket yet";
+  const currentPartnership = sortedCommentary.slice(lastWicketIndex + 1);
+  const partnership = {
+    runs: currentPartnership.reduce(
+      (total, item) => total + getFixtureActionRuns(item.action),
+      0,
+    ),
+    balls: currentPartnership.filter(
+      (item) => !["wide", "no_ball"].includes(item.action.toLowerCase()),
+    ).length,
+  };
 
   return {
     source: "fixture",
@@ -210,7 +270,7 @@ export function mapFixtureMatchDetails(
 
       target: null,
 
-      partnerShip: null,
+      partnerShip: partnership,
 
       currentRunRate: calculateRunRate(response.homeScore, response.homeOvers),
 
@@ -234,7 +294,7 @@ export function mapFixtureMatchDetails(
         state: response.status,
       },
 
-      lastWicket: "",
+      lastWicket: lastWicketDescription,
 
       remRunsToWin: 0,
 

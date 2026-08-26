@@ -755,7 +755,7 @@ function AddCommentary({
           <span className="match-info-score">
             {isFootball
               ? `${scores[matchTeams[0]?.teamName]?.runs || 0} - ${scores[matchTeams[1]?.teamName]?.runs || 0}`
-              : `${scores[matchTeams[0]?.teamName]?.runs || 0}/${scores[matchTeams[0]?.teamName]?.wkts || 0} - ${scores[matchTeams[1]?.teamName]?.runs || 0}/${scores[matchTeams[1]?.teamName]?.wkts || 0}`}
+              : `${scores[matchTeams[0]?.teamName]?.runs || 0}/${scores[matchTeams[0]?.teamName]?.wkts || 0} (${overs[matchTeams[0]?.teamName] || selectedMatch.homeOvers || "0.0"})`}
           </span>
           <span
             className="match-status-badge"

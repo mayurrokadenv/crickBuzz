@@ -5,6 +5,8 @@ import { fixtureService, type Fixture } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
 
 interface EditableFixture extends Fixture {
+  homeOvers?: string;
+  awayOvers?: string;
   statusValue: number;
   phaseValue: number;
 }
@@ -140,16 +142,16 @@ function FixtureListItem({
               </p>
             </div>
 
-            {realtime && (
-              <div className="fixture-score">
-                <strong>
-                  {`${realtime.homeScore}/${realtime.homeWickets ?? 0}`}
-                </strong>
-                <span className="fixture-score-meta">
-                  &nbsp;• {realtime.awayScore}/{realtime.awayWickets ?? 0}
-                </span>
-              </div>
-            )}
+            <div className="fixture-score">
+              <strong>
+                {`${realtime?.homeScore ?? fixture.homeScore}/${realtime?.homeWickets ?? fixture.homeWickets ?? 0} (${realtime?.homeOvers ?? fixture.homeOvers ?? "0.0"})`}
+              </strong>
+              <span className="fixture-score-meta">
+                &nbsp;• {realtime?.awayScore ?? fixture.awayScore}/
+                {realtime?.awayWickets ?? fixture.awayWickets ?? 0} (
+                {realtime?.awayOvers ?? fixture.awayOvers ?? "0.0"})
+              </span>
+            </div>
           </div>
 
           {!hideActions && (
@@ -239,7 +241,7 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
   const editableStatuses = [0, 5];
 
   const isEditableStatus = (status: number) =>
-  editableStatuses.includes(status);
+    editableStatuses.includes(status);
   const handleChange = (
     index: number,
     field: "statusValue" | "phaseValue",
