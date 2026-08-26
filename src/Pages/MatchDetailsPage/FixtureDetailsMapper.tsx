@@ -4,6 +4,43 @@ import type {
   MatchDetailsModel,
 } from "../../components/types/MatchDetailsModel";
 
+function mapFixtureBatter(
+  performer: FixtureDetailsDto["topPerformers"][number],
+  commentary: FixtureDetailsDto["commentary"],
+) {
+  const playerCommentary = commentary.filter(
+    (item) => item.playerId === performer.playerId,
+  );
+  const balls = playerCommentary.length;
+  const fours = playerCommentary.filter(
+    (item) => item.action === "Four",
+  ).length;
+  const sixes = playerCommentary.filter((item) => item.action === "Six").length;
+  const runs = performer.runsScored ?? 0;
+
+  return {
+    id: performer.playerId,
+    name: performer.playerName,
+    runs,
+    balls,
+    fours,
+    sixes,
+    strikeRate: balls > 0 ? ((runs / balls) * 100).toFixed(2) : "0.00",
+    playerUrl: "",
+    playerMatchHighlightsUrl: "",
+  };
+}
+
+function calculateRunRate(score: number, oversValue: unknown): number {
+  const oversText = String(oversValue ?? "0");
+  const [completedOversText, ballsText = "0"] = oversText.split(".");
+  const completedOvers = Number(completedOversText) || 0;
+  const balls = Number(ballsText) || 0;
+  const legalBalls = completedOvers * 6 + balls;
+
+  return legalBalls > 0 ? Number(((score / legalBalls) * 6).toFixed(2)) : 0;
+}
+
 export function mapFixtureMatchDetails(
   response: FixtureDetailsDto,
 ): MatchDetailsModel {
@@ -39,7 +76,29 @@ export function mapFixtureMatchDetails(
       },
     };
   });
-  console.log("Mapped Commentary", commentary);
+  const fixtureCommentary = response.commentary ?? [];
+  const performers = response.topPerformers ?? [];
+  const batterSource =
+    performers.length > 0
+      ? performers
+      : fixtureCommentary
+          .filter(
+            (item, index, items) =>
+              items.findIndex(
+                (candidate) => candidate.playerId === item.playerId,
+              ) === index,
+          )
+          .map((item) => ({
+            playerId: item.playerId,
+            playerName: item.playerName,
+            teamId: "",
+            teamName: item.side,
+            runsScored: 0,
+          }));
+  const batters = batterSource
+    .slice(0, 2)
+    .map((performer) => mapFixtureBatter(performer, fixtureCommentary));
+
   return {
     source: "fixture",
 
@@ -141,8 +200,8 @@ export function mapFixtureMatchDetails(
 
       status: response.status,
 
-      batsmanStriker: null,
-      batsmanNonStriker: null,
+      batsmanStriker: batters[0] ?? null,
+      batsmanNonStriker: batters[1] ?? null,
 
       bowlerStriker: null,
       bowlerNonStriker: null,
@@ -153,7 +212,7 @@ export function mapFixtureMatchDetails(
 
       partnerShip: null,
 
-      currentRunRate: 0,
+      currentRunRate: calculateRunRate(response.homeScore, response.homeOvers),
 
       requiredRunRate: 0,
 
