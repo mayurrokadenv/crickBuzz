@@ -944,6 +944,25 @@ function AddCommentary({
                 )}
               </select>
             </div>
+            
+            <div className="player-selector">
+              <select
+                value={selectedPlayerId}
+                onChange={(e) => setSelectedPlayerId(e.target.value)}
+                className="player-dropdown"
+                disabled={currentPlayers.length === 0 || !isMatchLive}
+              >
+                {currentPlayers.length === 0 ? (
+                  <option value="">No players available</option>
+                ) : (
+                  currentPlayers.map((player) => (
+                    <option key={player.playerId} value={player.playerId}>
+                      {player.playerName} ({player.role})
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
 
           <div className="control-group">
