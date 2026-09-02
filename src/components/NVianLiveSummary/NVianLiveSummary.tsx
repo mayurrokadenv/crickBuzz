@@ -114,26 +114,27 @@ function NVianLiveSummary({ fixtureId }: Props) {
   })();
 
   return (
-    <section className="nvian-live-summary">
-      <div className="nvian-live-summary__item">
-        <span>Partnership</span>
-        <strong>
-          {partnershipRuns} runs ({partnershipBalls} balls)
-        </strong>
-      </div>
-      <div className="nvian-live-summary__item">
-        <span>Last Wicket</span>
-        <strong>
-          {latestWicket
-            ? `${latestWicket.playerName} (${score}/${wickets})`
-            : "No wicket yet"}
-        </strong>
-      </div>
-      <div className="nvian-live-summary__item nvian-live-summary__item--recent">
-        <span>Recent Overs</span>
-        <strong>{recentOvers || "No overs yet"}</strong>
-      </div>
-    </section>
+    <></>
+    // <section className="nvian-live-summary">
+    //   <div className="nvian-live-summary__item">
+    //     <span>Partnership</span>
+    //     <strong>
+    //       {partnershipRuns} runs ({partnershipBalls} balls)
+    //     </strong>
+    //   </div>
+    //   <div className="nvian-live-summary__item">
+    //     <span>Last Wicket</span>
+    //     <strong>
+    //       {latestWicket
+    //         ? `${latestWicket.playerName} (${score}/${wickets})`
+    //         : "No wicket yet"}
+    //     </strong>
+    //   </div>
+    //   <div className="nvian-live-summary__item nvian-live-summary__item--recent">
+    //     <span>Recent Overs</span>
+    //     <strong>{recentOvers || "No overs yet"}</strong>
+    //   </div>
+    // </section>
   );
 }
 
