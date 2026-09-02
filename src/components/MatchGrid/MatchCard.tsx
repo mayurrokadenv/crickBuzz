@@ -1,7 +1,6 @@
 import "./MatchGrid.css";
-import { Link } from "react-router-dom";
 import type { MatchCardModel } from "../types/MatchCardModel";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
 
 type MatchCardProps = {
@@ -19,6 +18,8 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
   const route =
     match.source === "cricbuzz" ? `/match/${match.id}` : `/fixture/${match.id}`;
   const navigate = useNavigate();
+  const location = useLocation();
+  const dashboard = location.pathname === "/nvian" ? "nvian" : "live";
 
   const battingTeam =
     (realtime as any)?.battingTeam ?? (match as any)?.battingTeam ?? "home";
@@ -65,7 +66,7 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
         </span>
         <button
           className="match-card__view-button"
-          onClick={() => navigate(route)}
+          onClick={() => navigate(route, { state: { dashboard } })}
         >
           View
         </button>

@@ -20,6 +20,10 @@ function Header() {
     // Check if we're on the match details page (second page)
     const isMatchDetailsPage = location.pathname.startsWith("/match/");
     const isMatchFixturePage = location.pathname.startsWith("/fixture/");
+    const matchOrigin =
+        location.state?.dashboard === "nvian" || location.state?.dashboard === "live"
+            ? location.state.dashboard
+            : null;
     
     // Show back button on match details OR fixture pages
     const shouldShowBackButton = isMatchDetailsPage || isMatchFixturePage;
@@ -78,7 +82,10 @@ function Header() {
 
                 <button
                     className={`header__nav-btn ${
-                        location.pathname === "/nvian" ? "active" : ""
+                        location.pathname === "/nvian" ||
+                        (shouldShowBackButton && matchOrigin === "nvian")
+                            ? "active"
+                            : ""
                     }`}
                     onClick={() => navigate("/nvian")}
                 >
@@ -87,7 +94,10 @@ function Header() {
 
                 <button
                     className={`header__nav-btn ${
-                        location.pathname === "/" ? "active" : ""
+                        location.pathname === "/" ||
+                        (shouldShowBackButton && matchOrigin === "live")
+                            ? "active"
+                            : ""
                     }`}
                     onClick={() => navigate("/")}
                 >
