@@ -32,6 +32,8 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
         ? awayOvers
         : (homeOvers ?? awayOvers);
 
+        console.log("Match status===========================:", match.status);
+
   return (
     <article
       className={`match-card ${isSelected ? "match-card--selected" : ""}`}
