@@ -32,7 +32,11 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
         ? awayOvers
         : (homeOvers ?? awayOvers);
 
-        console.log("Match status===========================:", match.status);
+        // console.log("Match status===========================:", match.status);
+
+        const isLive =
+          match.status === "Live" ||
+          match.status === "In Progress";
 
   return (
     <article
@@ -44,12 +48,20 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
       <div className="match-card__header">
         <span className="match-card__sport">{match.sport}</span>
 
-        <span className="match-card__live">
-          {match.status === "In Progress" && (
-            <span className="match-card__live-dot" />
-          )}
+        <span
+            className={`match-card__status ${
+                isLive
+                    ? "match-card__status--live"
+                    : match.status === "Preview"
+                        ? "match-card__status--preview"
+                        : match.status === "Complete"
+                            ? "match-card__status--complete"
+                            : ""
+            }`}
+        >
+            {isLive && <span className="match-card__live-dot" />}
 
-          {match.status === "In Progress" ? "LIVE" : match.status}
+            {isLive ? "LIVE" : match.status}
         </span>
         <button
           className="match-card__view-button"

@@ -77,16 +77,11 @@
 
 }
 
-.match-card__live-dot{
-
-    width:8px;
-
-    height:8px;
-
-    border-radius:50%;
-
-    background:#ff4c6d;
-
+.match-card__live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
 }
 
 .match-card__teams{
@@ -185,3 +180,32 @@
 {
     color : whitesmoke
 }
+
+.match-card__live--active {
+    color: #22c55e;
+}
+
+.match-card__live--active .match-card__live-dot {
+    background: #22c55e;
+}
+
+.match-card__status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.match-card__status--live {
+    color: #22c55e;
+}
+
+.match-card__status--preview {
+    color: #f59e0b;
+}
+
+.match-card__status--complete {
+    color: #ff4c6d;
+}
+
