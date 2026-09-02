@@ -65,18 +65,27 @@ function CommentaryBox({
 
   return (
     <section className="commentary-box card">
-      <div className="commentary-box__header">
+    <div className="commentary-box__header">
         <h2>{title}</h2>
 
         <span>{comments.length} updates</span>
-      </div>
+    </div>
 
-      <div className="commentary-box__body" ref={bodyRef}>
-        {comments.map((comment) => (
-          <Comments key={comment.id} comment={comment} />
-        ))}
-      </div>
-    </section>
+    <div className="commentary-box__body" ref={bodyRef}>
+        {comments.length > 0 ? (
+            comments.map((comment) => (
+                <Comments
+                    key={comment.id}
+                    comment={comment}
+                />
+            ))
+        ) : (
+            <div className="no-data">
+                No data available
+            </div>
+        )}
+    </div>
+</section>
   );
 }
 

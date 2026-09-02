@@ -55,31 +55,39 @@ function TopPerformers({ fixtureId }: Props) {
       </div>
 
       <div className="tp-body">
-        {performers.map((player) => (
-          <div className="tp-row" key={player.rank}>
-            <div
-              className="tp-rank"
-              style={{ backgroundColor: player.color }}
-            >
-              {player.rank}
-            </div>
-
-            <div className="tp-player">
-              <div className="tp-name">{player.name}</div>
-
+        {performers.length > 0 ? (
+          performers.map((player) => (
+            <div className="tp-row" key={player.rank}>
               <div
-                className="tp-team"
-                style={{ color: player.color }}
+                className="tp-rank"
+                style={{ backgroundColor: player.color }}
               >
-                {player.team}
+                {player.rank}
+              </div>
+
+              <div className="tp-player">
+                <div className="tp-name">
+                  {player.name}
+                </div>
+
+                <div
+                  className="tp-team"
+                  style={{ color: player.color }}
+                >
+                  {player.team}
+                </div>
+              </div>
+
+              <div className="tp-score">
+                {player.score}
               </div>
             </div>
-
-            <div className="tp-score">
-              {player.score}
-            </div>
+          ))
+        ) : (
+          <div className="no-data">
+            No data available
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
