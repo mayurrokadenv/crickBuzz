@@ -13,6 +13,7 @@ import {
 import TopPerformers from "../components/TopPerformers/TopPerformers";
 import NVianLiveSummary from "../components/NVianLiveSummary/NVianLiveSummary";
 import { useNVianDashboardSearch } from "../context/NVianDashboardSearchContext";
+import "./Dashboard.css";
 
 function NVianDashboard() {
   const { searchTerm, setSearchTerm, matches, loading } =
@@ -46,11 +47,21 @@ function NVianDashboard() {
         selectedSportId={selectedSportId}
         onSportChange={setSelectedSportId}
       />
-      <MatchGrid
-        matches={matchCards}
-        selectedFixtureId={selectedFixtureId}
-        onMatchSelect={(match) => setSelectedFixtureId(match.id)}
-      />
+      {loading ? (
+        <section className="dashboard-empty-state">Loading...</section>
+      ) : matchCards.length > 0 ? (
+        <MatchGrid
+          matches={matchCards}
+          selectedFixtureId={selectedFixtureId}
+          onMatchSelect={(match) => setSelectedFixtureId(match.id)}
+        />
+      ) : (
+        <section className="dashboard-empty-state">
+          {searchTerm.trim()
+            ? "No matches found for your search."
+            : "No live matches available."}
+        </section>
+      )}
       <NVianLiveSummary fixtureId={selectedFixture?.id} />
       <div className="Commentry_Performers">
         <NVianCommentary

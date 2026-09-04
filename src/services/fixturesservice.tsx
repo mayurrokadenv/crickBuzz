@@ -49,7 +49,7 @@ export const sportService = {
 
 export const fixtureService = {
   getLiveFixtures: async (): Promise<Fixture[]> => {
-    const response = await api.get<Fixture[]>("/fixtures/live");
+    const response = await api.get<Fixture[]>("/fixtures/all");
     return response.data;
   },
   async updateFixture(

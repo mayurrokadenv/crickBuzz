@@ -8,6 +8,7 @@ import {useState,useEffect} from "react";
 import { getCurrentMatches, searchCurrentMatches } from "../services/MatchDataService";
 import RecentEntries from "../components/RecentEntries/RecentEntries";
 import LiveStatDetails from "../components/LiveStatDetails/LiveStatDetails";
+import "./Dashboard.css";
 
 import type { CricbuzzMatchItem } from "../components/types/Matches";
 import { useCommentaryFeed } from "../hooks/useCommentaryFeed";
@@ -57,9 +58,11 @@ const matchCards = matches.map(mapCricbuzzMatchToCard);
                 onSportChange={setSelectedSportId}
             />
 
-{
-
-  matchCards.length > 0 ? (
+            {loading ? (
+              <section className="dashboard-empty-state">
+                Loading...
+              </section>
+            ) : matchCards.length > 0 ? (
 
     <MatchGrid
 
@@ -71,13 +74,13 @@ const matchCards = matches.map(mapCricbuzzMatchToCard);
 
     />
 
-  ) : (
-
-    <section className="match-grid" style={{borderWidth:1}}>Loading</section>
-
-  )
-
-}
+            ) : (
+              <section className="dashboard-empty-state">
+                {searchTerm.trim()
+                  ? "No matches found for your search."
+                  : "No matches available."}
+              </section>
+            )}
             <div className="Commentry_Performers">
               <LiveCommentary
                     matchId={selectedFixture?.id}

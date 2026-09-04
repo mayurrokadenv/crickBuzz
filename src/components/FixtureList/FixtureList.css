@@ -18,11 +18,22 @@
     padding: 20px;
     border-radius: 12px;
     color: white;
+
+    /* Fixed height */
+    height: 600px;
+
+    /* Scroll when content exceeds height */
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    /* Makes box sizing predictable */
+    box-sizing: border-box;
 }
 
 .fixture-header {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
 }
 
@@ -44,10 +55,10 @@
     grid-column: 1 / -1;
 }
 
-    .full-row select {
-        width: 100%;
-        height: 30px;
-    }
+.full-row select {
+    width: 100%;
+    height: 30px;
+}
 
 .row input,
 .row select {
@@ -147,22 +158,37 @@
     color: white;
     cursor: pointer;
     font-size: 16px;
-    transition: .2s;
+    transition: 0.2s;
 }
 
-    .icon-btn:hover {
-        background: #2b3142;
-    }
+.icon-btn:hover {
+    background: #2b3142;
+}
 
 .delete:hover {
     background: #c0392b;
 }
 
-.row.single-column {
-    grid-template-columns: 1fr;
-}
-
 .save:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Scrollbar */
+.fixture-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.fixture-list::-webkit-scrollbar-track {
+    background: #171b24;
+    border-radius: 10px;
+}
+
+.fixture-list::-webkit-scrollbar-thumb {
+    background: #444c5c;
+    border-radius: 10px;
+}
+
+.fixture-list::-webkit-scrollbar-thumb:hover {
+    background: #5a6478;
 }

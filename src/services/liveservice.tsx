@@ -225,6 +225,8 @@ export const updateScoreFixtures = async (
   fixtureId: string,
   data: {
     side: 0 | 1;
+    battingPlayerId: string;
+    bowlingPlayerId: string;
     runsDelta?: number;
     wicketsDelta?: number;
     overs?: string;

@@ -276,6 +276,8 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
         fixture.scheduledAtUtc,
       );
 
+      console.log("Updated fixture:=====================>", updated);
+
       await showSuccess("Success", "Fixture updated successfully.");
 
       setFixtures((prev) =>

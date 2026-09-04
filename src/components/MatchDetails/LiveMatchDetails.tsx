@@ -28,7 +28,6 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
   const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
   // If we have a realtime score for this fixture, prefer it for display.
   const realtime = fixtureId ? scoreByMatch[fixtureId] : undefined;
-  debugger;
   return (
     <section className="live-match-details">
       {/* Current Score */}

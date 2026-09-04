@@ -50,7 +50,7 @@ function Login() {
 
         // Email empty
         if (!email) {
-            setError("Email is required");
+            setError("Please enter your email address");
             return;
         }
 
@@ -70,7 +70,7 @@ function Login() {
 
         // Password empty
         if (!password) {
-            setError("Password is required");
+            setError("Please enter your password");
             return;
         }
 

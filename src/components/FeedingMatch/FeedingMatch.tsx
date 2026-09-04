@@ -15,7 +15,6 @@ const FeedingMatchComponent = ({
   onMatchesLoaded,
   matches: externalMatches,
 }: FeedingMatchProps) => {
-  debugger;
   const [feedingMatches, setFeedingMatches] = useState<FeedingMatchs[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);

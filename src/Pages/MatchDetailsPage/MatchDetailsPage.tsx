@@ -272,7 +272,6 @@ function MatchDetailsPage() {
   // =========================================================
 
   const renderTabContent = () => {
-    debugger;
     switch (activeTab) {
       // -------------------------------------------------------
       // LIVE

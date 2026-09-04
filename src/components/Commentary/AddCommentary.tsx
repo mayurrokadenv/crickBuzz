@@ -557,6 +557,11 @@ function AddCommentary({
     return o * 6 + b >= totalOversLimit * 6;
   };
 
+  // Helper to check if a team's innings is over (overs limit reached)
+  const isInningsOverForTeam = (teamName: string) => {
+    return !isFootball && isAtMaxOvers(teamName);
+  };
+
   // ============================================================
   // INITIAL DATA LOAD
   // ============================================================
@@ -599,11 +604,11 @@ function AddCommentary({
           (f.homeTeamName.toLowerCase() ===
             selectedMatch.team1.toLowerCase() &&
             f.awayTeamName.toLowerCase() ===
-              selectedMatch.team2.toLowerCase()) ||
+            selectedMatch.team2.toLowerCase()) ||
           (f.homeTeamName.toLowerCase() ===
             selectedMatch.team2.toLowerCase() &&
             f.awayTeamName.toLowerCase() ===
-              selectedMatch.team1.toLowerCase()),
+            selectedMatch.team1.toLowerCase()),
       );
 
       if (fixture) {
@@ -884,6 +889,15 @@ function AddCommentary({
       return;
     }
 
+    // ---- NEW: Block action if overs are completed ----
+    if (isInningsOverForTeam(selectedTeamName)) {
+      showError(
+        "Error",
+        `${selectedTeamName} has completed their overs. No more actions allowed.`,
+      );
+      return;
+    }
+
     if (
       !isFootball &&
       actionType === "wicket" &&
@@ -937,6 +951,15 @@ function AddCommentary({
           "Cannot post commentary for a match that is not live",
         );
 
+        return;
+      }
+
+      // ---- NEW: Block posting if overs are completed ----
+      if (isInningsOverForTeam(selectedTeamName)) {
+        showError(
+          "Error",
+          `${selectedTeamName} has completed their overs. No more actions allowed.`,
+        );
         return;
       }
 
@@ -994,7 +1017,7 @@ function AddCommentary({
       if (
         !isFootball &&
         selectedActionType ===
-          "wicket"
+        "wicket"
       ) {
         const currentWkts =
           scores[selectedTeamName]
@@ -1016,7 +1039,7 @@ function AddCommentary({
 
       const actionValue =
         ACTION_MAP[
-          selectedActionType
+        selectedActionType
         ];
 
       if (
@@ -1049,23 +1072,22 @@ function AddCommentary({
       const runsDelta =
         isExtraEligible
           ? baseRuns +
-            selectedExtraRuns
+          selectedExtraRuns
           : baseRuns;
 
       const wicketsDelta =
         selectedActionType ===
-        "wicket"
+          "wicket"
           ? 1
           : 0;
 
       const extraNoteSuffix =
         isExtraEligible &&
-        selectedExtraRuns > 0
-          ? ` +${selectedExtraRuns} run${
-              selectedExtraRuns > 1
-                ? "s"
-                : ""
-            } (overthrow)`
+          selectedExtraRuns > 0
+          ? ` +${selectedExtraRuns} run${selectedExtraRuns > 1
+            ? "s"
+            : ""
+          } (overthrow)`
           : "";
 
       // Compute new overs
@@ -1081,7 +1103,7 @@ function AddCommentary({
       ) {
         const currentOvers =
           overs[
-            selectedTeamName
+          selectedTeamName
           ] || "0.0";
 
         newOvers =
@@ -1105,9 +1127,8 @@ function AddCommentary({
 
         action: actionValue,
 
-        note: `${selectedActionType.toUpperCase()}: ${
-          note || ""
-        }${extraNoteSuffix}`.trim(),
+        note: `${selectedActionType.toUpperCase()}: ${note || ""
+          }${extraNoteSuffix}`.trim(),
 
         currentball:
           newOvers ??
@@ -1131,22 +1152,21 @@ function AddCommentary({
             selectedFixtureId,
             {
               side,
+              battingPlayerId: selectedBatterId,
+              bowlingPlayerId: selectedBowlerId,
               runsDelta,
-              wicketsDelta,
               overs:
                 newOvers ??
-                overs[
-                  selectedTeamName
-                ] ??
+                overs[selectedTeamName] ??
                 "0.0",
+              wicketsDelta,
             },
           );
 
           if (newOvers) {
             setOvers((prev) => ({
               ...prev,
-              [selectedTeamName]:
-                newOvers as string,
+              [selectedTeamName]: newOvers,
             }));
           }
         } else {
@@ -1174,26 +1194,22 @@ function AddCommentary({
             ...selectedMatch,
 
             score: isFootball
-              ? `${
-                  scores[
-                    matchTeams[0]
-                      ?.teamName
-                  ]?.runs || 0
-                }-${
-                  scores[
-                    matchTeams[1]
-                      ?.teamName
-                  ]?.runs || 0
-                }`
-              : `${
-                  scores[
-                    selectedTeamName
-                  ]?.runs || 0
-                }/${
-                  scores[
-                    selectedTeamName
-                  ]?.wkts || 0
-                }`,
+              ? `${scores[
+                matchTeams[0]
+                  ?.teamName
+              ]?.runs || 0
+              }-${scores[
+                matchTeams[1]
+                  ?.teamName
+              ]?.runs || 0
+              }`
+              : `${scores[
+                selectedTeamName
+              ]?.runs || 0
+              }/${scores[
+                selectedTeamName
+              ]?.wkts || 0
+              }`,
           };
 
           onScoreUpdated(
@@ -1321,6 +1337,9 @@ function AddCommentary({
       selectedActionType,
     );
 
+  // Determine if the selected batting team has finished its overs
+  const inningsOver = isInningsOverForTeam(selectedTeamName);
+
   // ============================================================
   // JSX
   // ============================================================
@@ -1328,7 +1347,7 @@ function AddCommentary({
   return (
     <div className="add-commentary-container">
       {selectedMatch &&
-      matchTeams.length === 2 ? (
+        matchTeams.length === 2 ? (
         <div className="match-info-banner">
           <span className="match-info">
             {selectedMatch.sport}:{" "}
@@ -1338,35 +1357,30 @@ function AddCommentary({
 
           <span className="match-info-score">
             {isFootball
-              ? `${
-                  scores[
-                    matchTeams[0]
-                      ?.teamName
-                  ]?.runs || 0
-                } - ${
-                  scores[
-                    matchTeams[1]
-                      ?.teamName
-                  ]?.runs || 0
-                }`
-              : `${
-                  scores[
-                    matchTeams[0]
-                      ?.teamName
-                  ]?.runs || 0
-                }/${
-                  scores[
-                    matchTeams[0]
-                      ?.teamName
-                  ]?.wkts || 0
-                } (${
-                  overs[
-                    matchTeams[0]
-                      ?.teamName
-                  ] ||
-                  selectedMatch.homeOvers ||
-                  "0.0"
-                })`}
+              ? `${scores[
+                matchTeams[0]
+                  ?.teamName
+              ]?.runs || 0
+              } - ${scores[
+                matchTeams[1]
+                  ?.teamName
+              ]?.runs || 0
+              }`
+              : `${scores[
+                matchTeams[0]
+                  ?.teamName
+              ]?.runs || 0
+              }/${scores[
+                matchTeams[0]
+                  ?.teamName
+              ]?.wkts || 0
+              } (${overs[
+              matchTeams[0]
+                ?.teamName
+              ] ||
+              selectedMatch.homeOvers ||
+              "0.0"
+              })`}
           </span>
 
           <span
@@ -1387,7 +1401,7 @@ function AddCommentary({
             {isMatchLive
               ? "🔴 LIVE"
               : matchStatus?.toUpperCase() ||
-                "SCHEDULED"}
+              "SCHEDULED"}
           </span>
 
           <span
@@ -1454,11 +1468,10 @@ function AddCommentary({
       ======================================================== */}
 
       <div
-        className={`score-control ${
-          !isMatchLive
+        className={`score-control ${!isMatchLive
             ? "disabled-section"
             : ""
-        }`}
+          }`}
       >
         <div className="score-header">
           <h3>
@@ -1483,7 +1496,7 @@ function AddCommentary({
             (team) => {
               const teamScore =
                 scores[
-                  team.name
+                team.name
                 ] || {
                   runs: 0,
                   wkts: 0,
@@ -1543,7 +1556,7 @@ function AddCommentary({
                           </span>
 
                           <div className="overs-stepper">
-                            <button
+                            {/* <button
                               className="stepper-btn"
                               onClick={() =>
                                 handleOversChange(
@@ -1554,13 +1567,13 @@ function AddCommentary({
                               disabled={
                                 !isMatchLive ||
                                 overs[
-                                  team.name
+                                team.name
                                 ] ===
-                                  "0.0"
+                                "0.0"
                               }
                             >
                               −
-                            </button>
+                            </button> */}
 
                             <span className="overs-value">
                               {overs[
@@ -1570,17 +1583,17 @@ function AddCommentary({
 
                               {totalOversLimit !==
                                 null && (
-                                <span className="overs-limit">
-                                  {" "}
-                                  /{" "}
-                                  {
-                                    totalOversLimit
-                                  }
-                                </span>
-                              )}
+                                  <span className="overs-limit">
+                                    {" "}
+                                    /{" "}
+                                    {
+                                      totalOversLimit
+                                    }
+                                  </span>
+                                )}
                             </span>
 
-                            <button
+                            {/* <button
                               className="stepper-btn"
                               onClick={() =>
                                 handleOversChange(
@@ -1596,7 +1609,7 @@ function AddCommentary({
                               }
                             >
                               +
-                            </button>
+                            </button> */}
                           </div>
                         </div>
                       </>
@@ -1616,11 +1629,10 @@ function AddCommentary({
       ======================================================== */}
 
       <div
-        className={`commentary-section ${
-          !isMatchLive
+        className={`commentary-section ${!isMatchLive
             ? "disabled-section"
             : ""
-        }`}
+          }`}
       >
         <div className="commentary-header">
           <h3>
@@ -1638,10 +1650,9 @@ function AddCommentary({
         <p className="commentary-subtitle">
           {isMatchLive
             ? "Pick a team and player, then tap an action — it pushes straight to the live feed."
-            : `Commentary is disabled while match is ${
-                matchStatus?.toLowerCase() ||
-                "scheduled"
-              }`}
+            : `Commentary is disabled while match is ${matchStatus?.toLowerCase() ||
+            "scheduled"
+            }`}
         </p>
 
         {/* ======================================================
@@ -1658,12 +1669,11 @@ function AddCommentary({
               (team) => (
                 <button
                   key={team.name}
-                  className={`team-btn ${
-                    selectedTeamName ===
-                    team.name
+                  className={`team-btn ${selectedTeamName ===
+                      team.name
                       ? "active"
                       : ""
-                  }`}
+                    }`}
                   onClick={() =>
                     setSelectedTeamName(
                       team.name,
@@ -1727,12 +1737,13 @@ function AddCommentary({
                 className="player-dropdown"
                 disabled={
                   batterPlayers.length ===
-                    0 ||
-                  !isMatchLive
+                  0 ||
+                  !isMatchLive ||
+                  inningsOver   // also disable if innings over
                 }
               >
                 {batterPlayers.length ===
-                0 ? (
+                  0 ? (
                   <option value="">
                     No batters
                     available
@@ -1805,12 +1816,13 @@ function AddCommentary({
                 className="player-dropdown"
                 disabled={
                   bowlerPlayers.length ===
-                    0 ||
-                  !isMatchLive
+                  0 ||
+                  !isMatchLive ||
+                  inningsOver
                 }
               >
                 {bowlerPlayers.length ===
-                0 ? (
+                  0 ? (
                   <option value="">
                     No bowlers
                     available
@@ -1846,7 +1858,10 @@ function AddCommentary({
               NOTE
           ==================================================== */}
 
-          <div className="control-group">
+          
+        </div>
+
+        <div className="control-group">
             <label>
               NOTE (optional)
             </label>
@@ -1867,12 +1882,11 @@ function AddCommentary({
                 }
                 className="note-input"
                 disabled={
-                  !isMatchLive
+                  !isMatchLive || inningsOver
                 }
               />
             </div>
           </div>
-        </div>
 
         {/* ======================================================
             QUICK ACTIONS
@@ -1910,11 +1924,11 @@ function AddCommentary({
                   : "repeat(4, 1fr)",
               gap: "8px",
               opacity:
-                isMatchLive
+                isMatchLive && !inningsOver
                   ? 1
                   : 0.5,
               pointerEvents:
-                isMatchLive
+                isMatchLive && !inningsOver
                   ? "auto"
                   : "none",
             }}
@@ -1928,27 +1942,28 @@ function AddCommentary({
                 const isWicketDisabled =
                   !isFootball &&
                   action.type ===
-                    "wicket" &&
+                  "wicket" &&
                   isAtMaxWickets(
                     selectedTeamName,
                   );
 
+                const isOverLimit = !isFootball && isAtMaxOvers(selectedTeamName);
+
                 const isDisabled =
                   !isMatchLive ||
-                  isWicketDisabled;
+                  isWicketDisabled ||
+                  isOverLimit;
 
                 return (
                   <button
                     key={
                       action.type
                     }
-                    className={`action-btn ${
-                      action.type
-                    } ${
-                      isSelected
+                    className={`action-btn ${action.type
+                      } ${isSelected
                         ? "selected"
                         : ""
-                    }`}
+                      }`}
                     onClick={() =>
                       handleActionSelect(
                         action.type,
@@ -1960,6 +1975,8 @@ function AddCommentary({
                     title={
                       isWicketDisabled
                         ? `${selectedTeamName} is all out`
+                        : isOverLimit
+                        ? `${selectedTeamName} has completed their overs`
                         : undefined
                     }
                     style={{
@@ -2040,6 +2057,13 @@ function AddCommentary({
             )}
           </div>
 
+          {/* ---- NEW: Display message when overs are completed ---- */}
+          {inningsOver && isMatchLive && (
+            <div style={{ color: "#f87171", fontSize: "14px", marginTop: "8px" }}>
+              ⛔ {selectedTeamName} has finished their overs – no further actions allowed.
+            </div>
+          )}
+
           {/* ====================================================
               EXTRA RUNS PICKER
           ==================================================== */}
@@ -2092,18 +2116,17 @@ function AddCommentary({
                           )
                         }
                         disabled={
-                          !isMatchLive
+                          !isMatchLive || inningsOver
                         }
                         style={{
                           padding:
                             "6px 14px",
                           borderRadius:
                             "8px",
-                          border: `1px solid ${
-                            isSelected
+                          border: `1px solid ${isSelected
                               ? "#2563EB"
                               : "#3a3f4b"
-                          }`,
+                            }`,
                           background:
                             isSelected
                               ? "#2563EB"
@@ -2117,17 +2140,17 @@ function AddCommentary({
                           fontWeight:
                             600,
                           cursor:
-                            !isMatchLive
+                            !isMatchLive || inningsOver
                               ? "not-allowed"
                               : "pointer",
                           opacity:
-                            !isMatchLive
+                            !isMatchLive || inningsOver
                               ? 0.5
                               : 1,
                         }}
                       >
                         {val ===
-                        0
+                          0
                           ? "None"
                           : `+${val}`}
                       </button>
@@ -2154,28 +2177,29 @@ function AddCommentary({
           }}
         >
           <button
-            className={`add-note-btn ${
-              postStatus ===
-              "success"
+            className={`add-note-btn ${postStatus ===
+                "success"
                 ? "success"
                 : ""
-            } ${
-              postStatus ===
-              "error"
+              } ${postStatus ===
+                "error"
                 ? "error"
                 : ""
-            }`}
+              }`}
             onClick={
               handlePostCommentary
             }
             disabled={
               isPosting ||
               !selectedActionType ||
-              !isMatchLive
+              !isMatchLive ||
+              inningsOver
             }
           >
             {!isMatchLive ? (
               "Match Not Live"
+            ) : inningsOver ? (
+              "Overs Completed"
             ) : isPosting ? (
               "Processing..."
             ) : postStatus ===
@@ -2200,7 +2224,8 @@ function AddCommentary({
         ====================================================== */}
 
         {selectedActionType &&
-          isMatchLive && (
+          isMatchLive &&
+          !inningsOver && (
             <div
               style={{
                 fontSize:
@@ -2230,7 +2255,7 @@ function AddCommentary({
 
               {showExtraRunsPicker &&
                 selectedExtraRuns >
-                  0 && (
+                0 && (
                   <>
                     {" "}
                     (+
@@ -2239,7 +2264,7 @@ function AddCommentary({
                     }{" "}
                     run
                     {selectedExtraRuns >
-                    1
+                      1
                       ? "s"
                       : ""}
                     )
