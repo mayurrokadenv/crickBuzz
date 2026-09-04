@@ -23,7 +23,11 @@ function Header() {
     const matchOrigin =
         location.state?.dashboard === "nvian" || location.state?.dashboard === "live"
             ? location.state.dashboard
-            : null;
+            : isMatchFixturePage
+                ? "nvian"
+                : isMatchDetailsPage
+                    ? "live"
+                    : null;
     
     // Show back button on match details OR fixture pages
     const shouldShowBackButton = isMatchDetailsPage || isMatchFixturePage;
@@ -34,10 +38,13 @@ function Header() {
     };
 
     const handleBack = () => {
-        navigate(-1); // Go back to previous page
-    };
+        if (location.state?.dashboard) {
+            navigate(-1);
+            return;
+        }
 
-    const backimage = "./public/backbutton.svg";
+        navigate(matchOrigin === "nvian" ? "/nvian" : "/");
+    };
 
     return (
         <header className="header card">

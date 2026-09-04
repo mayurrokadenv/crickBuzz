@@ -90,6 +90,13 @@ body{
   margin-bottom:30px
 }
 
+@media (max-width: 900px) {
+    .Commentry_Performers {
+        grid-template-columns: 1fr;
+        row-gap: 20px;
+    }
+}
+
 .live-stat-details-container{
     margin-top: 20px;
     margin-bottom: 20px;

@@ -1,5 +1,5 @@
 .top-performers-card {
-  width: 360px;
+  width: min(360px, 100%);
   background: #181c24;
   border: 1px solid #2b3140;
   border-radius: 16px;
@@ -7,6 +7,12 @@
   color: white;
   float: right;
   height: fit-content;
+}
+
+@media (max-width: 900px) {
+  .top-performers-card {
+    float: none;
+  }
 }
 
 .tp-header {

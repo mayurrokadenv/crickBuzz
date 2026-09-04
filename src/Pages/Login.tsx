@@ -2,7 +2,7 @@ import { useState } from "react";
 import { loginAdmin } from "../services/adminservice";
 import { useAuth } from "../context/AuthContext";
 import "../styles/Login.css";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Header from "../components/Header/Header";
 
 function Login() {
@@ -224,9 +224,9 @@ function Login() {
                     {/* Register */}
                     <span className="login-register-link">
                         Don't have an account ?{" "}
-                        <a href="/register">
+                        <Link to="/register">
                             Register
-                        </a>
+                        </Link>
                     </span>
 
                 </form>

@@ -1,6 +1,6 @@
 .admin-tabs{
     display:flex;
-    width:420px;
+    width:min(420px, 100%);
     background:#171b24;
     border-radius:14px;
     overflow:hidden;

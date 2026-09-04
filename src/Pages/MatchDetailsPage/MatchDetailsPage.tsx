@@ -18,7 +18,7 @@ import type { MatchCommentaryModel } from "../../components/types/MatchDetailsMo
 import type { CricbuzzScorecardResponse } from "../../components/types/CricbuzzScorecard";
 
 import { getMatchDetails } from "../../services/common/MatchDetailsService";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import {
   getCricbuzzScorecard,
@@ -39,6 +39,7 @@ function MatchDetailsPage() {
   const { matchId } = useParams();
 
   const { pathname } = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const source: MatchSource = pathname.startsWith("/fixture")
     ? "fixture"
@@ -55,7 +56,32 @@ function MatchDetailsPage() {
   const [fixtureScorecard, setFixtureScorecard] =
     useState<FixtureScorecard | null>(null);
 
-  const [activeTab, setActiveTab] = useState<MatchTab>("Live");
+  const requestedTab = searchParams.get("tab");
+  const initialTab: MatchTab =
+    requestedTab === "Scorecard" ||
+    requestedTab === "Commentary" ||
+    requestedTab === "Stats"
+      ? requestedTab
+      : "Live";
+  const [activeTab, setActiveTab] = useState<MatchTab>(initialTab);
+
+  useEffect(() => {
+    const nextTab: MatchTab =
+      requestedTab === "Scorecard" ||
+      requestedTab === "Commentary" ||
+      requestedTab === "Stats"
+        ? requestedTab
+        : "Live";
+
+    setActiveTab((currentTab) =>
+      currentTab === nextTab ? currentTab : nextTab,
+    );
+  }, [requestedTab]);
+
+  const handleTabChange = (tab: MatchTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab }, { replace: true });
+  };
 
   const [loading, setLoading] = useState(true);
 
@@ -437,7 +463,7 @@ function MatchDetailsPage() {
 
       {/* MATCH TABS */}
 
-      <MatchTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      <MatchTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* MAIN CONTENT */}
 

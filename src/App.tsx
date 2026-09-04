@@ -54,7 +54,7 @@ function App() {
                                 element={
                                     <ProtectedRoute
                                         element={<SuperAdmin />}
-                                        requireAdmin={true}
+                                        requireSuperAdmin={true}
                                     />
                                 }
                             />
