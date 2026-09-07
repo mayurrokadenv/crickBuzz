@@ -850,6 +850,8 @@ function AddCommentary({
         selectedFixtureId!,
         {
           side,
+          battingPlayerId: selectedBatterId,
+          bowlingPlayerId: selectedBowlerId,
           runsDelta: 0,
           wicketsDelta: 0,
           overs: newOversStr,
@@ -1174,6 +1176,8 @@ function AddCommentary({
             selectedFixtureId,
             {
               side,
+              battingPlayerId: selectedBatterId,
+              bowlingPlayerId: selectedBowlerId,
               runsDelta,
               wicketsDelta: 0,
               overs: "",
