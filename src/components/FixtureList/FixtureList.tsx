@@ -295,9 +295,13 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
       );
 
       setEditingId(null);
-    } catch (err) {
+    } catch (err: unknown) {
       loadFixtures();
-      showError("Error", "Update failed");
+      const error = err as {
+        response?: { data?: { detail?: string } };
+      };
+      console.log("Error updating fixture:=====================>", error.response || error);
+      showError("Error", error.response?.data?.detail || "Unable to update fixture.");
     }
   };
 
