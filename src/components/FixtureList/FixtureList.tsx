@@ -48,6 +48,18 @@ function FixtureListItem({
 
   const realtime = fixture.id ? scoreByMatch[String(fixture.id)] : undefined;
 
+  const getLocalDateTimeString = (utcString: string) => {
+  if (!utcString) return '';
+  const date = new Date(utcString + 'Z');
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+
   return (
     <div key={fixture.id}>
       {editingId === fixture.id ? (
@@ -61,7 +73,7 @@ function FixtureListItem({
           <div className="row">
             <input
               type="datetime-local"
-              value={fixture.scheduledAtUtc.substring(0, 16)}
+              value={getLocalDateTimeString(fixture.scheduledAtUtc)}
               disabled={!canEdit}
               onChange={(e) => handleDateChange(index, e.target.value)}
             />
@@ -137,8 +149,7 @@ function FixtureListItem({
               </h4>
 
               <p>
-                {new Date(fixture.scheduledAtUtc).toLocaleString()} •{" "}
-                {fixture.phase} • {fixture.status}
+                {new Date(fixture.scheduledAtUtc + 'Z').toLocaleString()} • {fixture.phase} • {fixture.status}
               </p>
             </div>
 
