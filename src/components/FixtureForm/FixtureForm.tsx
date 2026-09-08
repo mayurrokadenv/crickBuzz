@@ -23,6 +23,9 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
     const [loading, setLoading] = useState(true);
     const [sportswiseteams, setTeams] = useState<Team[]>([]);
 
+    const now = new Date();
+    const minDateTime = now.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
+
     const [fixture, setFixture] = useState<Fixture>({
         sport: "",
         home: "",
@@ -117,9 +120,26 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
             scheduledAtUtc: new Date(fixture.scheduledAtUtc).toISOString(),
         };
 
+
+        console.log("Payload before sending:", payload);
+
         // Only include totalOvers if it's cricket
         if (isCricket) {
-            payload.totalOvers = fixture.totalOvers;
+            if (!fixture.totalOvers) {
+            showError("Error", "Please enter total overs");
+            return;
+            }
+            if (isNaN(Number(fixture.totalOvers)) || Number(fixture.totalOvers) <= 0) {
+            showError("Error", "Please enter a valid number of overs (greater than 0)");
+            return;
+            }
+        }
+
+        // --- NEW VALIDATION ---
+        const scheduledDate = new Date(fixture.scheduledAtUtc);
+        if (scheduledDate < now) {
+            showError("Error", "Scheduled date and time cannot be in the past.");
+            return;
         }
 
         try {
@@ -250,6 +270,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                         name="scheduledAtUtc"
                         value={fixture.scheduledAtUtc}
                         onChange={handleChange}
+                        min={minDateTime}
                         required
                     />
                 </div>

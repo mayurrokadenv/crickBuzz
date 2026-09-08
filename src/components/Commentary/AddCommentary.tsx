@@ -60,6 +60,7 @@ const CRICKET_ACTION_MAP: Record<string, number> = {
   three: 6,
   no_ball: 17,
   byes :18,
+  dot_ball: 19,
 };
 
 // Football Action Map
@@ -167,13 +168,24 @@ const cricketQuickActions = [
   },
   {
     label: "Byes",
-    runs: 0,
+    runs: 1,
     type: "byes",
     icon: "0️⃣",
     color: "#6B7280",
     bgColor: "#E5E7EB",
     borderColor: "#6B7280",
     selectedBg: "#6B7280",
+    selectedColor: "#FFFFFF",
+  },
+  {
+    label: "Dot ball",
+    runs: 0,
+    type: "dot_ball",
+    icon: "🔯",
+    color: "#eff0e7",
+    bgColor: "#92a675",
+    borderColor: "#555b06",
+    selectedBg: "#d3cd97",
     selectedColor: "#FFFFFF",
   },
 ];
@@ -867,6 +879,7 @@ function AddCommentary({
           runsDelta: 0,
           wicketsDelta: 0,
           overs: newOversStr,
+          action: 0
         },
       );
 
@@ -952,6 +965,7 @@ function AddCommentary({
       "two",
       "three",
       "byes",
+      'dot_ball',
     ]);
 
   // ============================================================
@@ -1169,6 +1183,7 @@ function AddCommentary({
               side,
               battingPlayerId: selectedBatterId,
               bowlingPlayerId: selectedBowlerId,
+              action: actionValue,
               runsDelta,
               overs:
                 newOvers ??
@@ -1191,6 +1206,7 @@ function AddCommentary({
               side,
               battingPlayerId: selectedBatterId,
               bowlingPlayerId: selectedBowlerId,
+              action: actionValue,
               runsDelta,
               wicketsDelta: 0,
               overs: "",
