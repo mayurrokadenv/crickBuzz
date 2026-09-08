@@ -131,6 +131,8 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                 body: JSON.stringify(payload),
             });
 
+            console.log("Response from server==================:", response.url, response.status, response.statusText);
+
             if (!response.ok) {
                 let errorMessage = "Failed to create fixture";
                 try {
