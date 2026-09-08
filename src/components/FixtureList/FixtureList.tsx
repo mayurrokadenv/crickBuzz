@@ -39,8 +39,8 @@ function FixtureListItem({
 }) {
   // Live fixtures should remain editable as admin users may need to adjust
   // phase/status after a match has started.
-  const canEdit = [0, 1, 5].includes(fixture.statusValue);
-  const hideActions = fixture.statusValue === 2 || fixture.statusValue === 4;
+  const canEdit = true
+  const hideActions = false
 
   // Call the score feed hook the same way LiveMatchDetails does: pass
   // the fixture id only (hook joins the correct group).
