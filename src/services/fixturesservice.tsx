@@ -58,7 +58,7 @@ export const fixtureService = {
     phase: number,
     scheduledAtUtc: string,
   ): Promise<Fixture> {
-    const response = await api.patch(`${API_BASE_URL}/fixtures/${id}`, {
+    const response = await api.patch(`fixtures/${id}`, {
       status,
       phase,
       scheduledAtUtc,
