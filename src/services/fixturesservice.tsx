@@ -63,6 +63,7 @@ export const fixtureService = {
       phase,
       scheduledAtUtc,
     });
+    console.log("Response from server==================:", response.url, response.status, response.statusText);
 
     return response.data;
   },
