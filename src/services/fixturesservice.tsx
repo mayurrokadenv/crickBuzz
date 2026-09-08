@@ -67,8 +67,8 @@ export const fixtureService = {
 
     return response.data;
   },
-  async deleteFixture(id: string) {
-    await axios.delete(`${API_BASE_URL}/${id}`);
+  async deleteFixture(id: string): Promise<void> {
+    await api.delete(`/fixtures/${id}`);
   },
 };
 

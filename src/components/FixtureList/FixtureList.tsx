@@ -306,9 +306,10 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
 
     try {
       await fixtureService.deleteFixture(id);
-
+      showSuccess("Success", "Fixture deleted successfully.");
       setFixtures((prev) => prev.filter((x) => x.id !== id));
     } catch (err) {
+      showError("Error", "Unable to delete fixture.");
       console.error(err);
       alert("Unable to delete fixture.");
     }
