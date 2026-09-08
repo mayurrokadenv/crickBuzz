@@ -605,6 +605,8 @@ function AddCommentary({
       allTeams.length > 0 &&
       liveFixturesList.length > 0
     ) {
+      const previousSelectedTeamName = selectedTeamName;
+
       const team1 = allTeams.find(
         (t) =>
           t.teamName.toLowerCase() ===
@@ -662,14 +664,19 @@ function AddCommentary({
       setSelectedExtraRuns(0);
       setNote("");
 
-      // Reset both player selections
-      setSelectedBatterId("");
-      setSelectedBowlerId("");
-
-      // Default to first team
       if (foundTeams.length > 0) {
+        const teamStillExists =
+          previousSelectedTeamName &&
+          foundTeams.some(
+            (team) =>
+              team.teamName.toLowerCase() ===
+              previousSelectedTeamName.toLowerCase(),
+          );
+
         setSelectedTeamName(
-          foundTeams[0].teamName,
+          teamStillExists
+            ? previousSelectedTeamName
+            : foundTeams[0].teamName,
         );
       }
     } else {
@@ -689,7 +696,6 @@ function AddCommentary({
       setSelectedExtraRuns(0);
       setNote("");
 
-      // Reset both players
       setSelectedBatterId("");
       setSelectedBowlerId("");
     }
@@ -722,41 +728,53 @@ function AddCommentary({
       return;
     }
 
-    // Selected team = batting team
     const battingTeam = matchTeams.find(
       (team) =>
         team.teamName.toLowerCase() ===
         selectedTeamName.toLowerCase(),
     );
 
-    // Opposite team = bowling team
     const bowlingTeam = matchTeams.find(
       (team) =>
         team.teamName.toLowerCase() !==
         selectedTeamName.toLowerCase(),
     );
 
-    // Automatically select first batter
+    const currentBatterIsValid =
+      selectedBatterId &&
+      battingTeam?.players?.some(
+        (player) => player.playerId === selectedBatterId,
+      );
+
+    const currentBowlerIsValid =
+      selectedBowlerId &&
+      bowlingTeam?.players?.some(
+        (player) => player.playerId === selectedBowlerId,
+      );
+
     if (
       battingTeam &&
       battingTeam.players &&
       battingTeam.players.length > 0
     ) {
       setSelectedBatterId(
-        battingTeam.players[0].playerId,
+        currentBatterIsValid
+          ? selectedBatterId
+          : battingTeam.players[0].playerId,
       );
     } else {
       setSelectedBatterId("");
     }
 
-    // Automatically select first bowler
     if (
       bowlingTeam &&
       bowlingTeam.players &&
       bowlingTeam.players.length > 0
     ) {
       setSelectedBowlerId(
-        bowlingTeam.players[0].playerId,
+        currentBowlerIsValid
+          ? selectedBowlerId
+          : bowlingTeam.players[0].playerId,
       );
     } else {
       setSelectedBowlerId("");
@@ -764,6 +782,8 @@ function AddCommentary({
   }, [
     selectedTeamName,
     matchTeams,
+    selectedBatterId,
+    selectedBowlerId,
   ]);
 
   // ============================================================
