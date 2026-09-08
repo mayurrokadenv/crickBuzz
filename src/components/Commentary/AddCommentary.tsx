@@ -59,6 +59,7 @@ const CRICKET_ACTION_MAP: Record<string, number> = {
   two: 5,
   three: 6,
   no_ball: 17,
+  byes :18,
 };
 
 // Football Action Map
@@ -158,6 +159,17 @@ const cricketQuickActions = [
     runs: 1,
     type: "no_ball",
     icon: "🙅🏻‍♂️",
+    color: "#6B7280",
+    bgColor: "#E5E7EB",
+    borderColor: "#6B7280",
+    selectedBg: "#6B7280",
+    selectedColor: "#FFFFFF",
+  },
+  {
+    label: "Byes",
+    runs: 0,
+    type: "byes",
+    icon: "0️⃣",
     color: "#6B7280",
     bgColor: "#E5E7EB",
     borderColor: "#6B7280",
@@ -939,6 +951,7 @@ function AddCommentary({
       "wicket",
       "two",
       "three",
+      "byes",
     ]);
 
   // ============================================================
