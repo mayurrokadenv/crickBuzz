@@ -53,7 +53,7 @@ export async function getFixtureScorecard(
 
 export const getLiveFixtures = async () => {
   const response = await axios.get(
-    `${API_BASE_URL}/fixtures/live`
+    `${API_BASE_URL}/fixtures/all`
   );
  
   return response.data;
