@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { FeedingMatchs } from "../../services/match.types";
 import {
   fetchLiveTeams,
@@ -341,6 +341,12 @@ function AddCommentary({
   // ---- Extra runs (overthrows) on wide / no-ball ----
   const [selectedExtraRuns, setSelectedExtraRuns] = useState<number>(0);
 
+  // ---- Bowler overs tracking ----
+  const [bowlerOvers, setBowlerOvers] = useState<Record<string, string>>({});
+
+  // ---- Ref to track previous match ID for resetting bowler overs only on match change ----
+  const prevMatchIdRef = useRef<string | null>(null);
+
   // Actions where extra runs can be added.
   const EXTRA_RUNS_ELIGIBLE_ACTIONS = new Set(["wide", "no_ball"]);
 
@@ -596,10 +602,13 @@ function AddCommentary({
   }, []);
 
   // ============================================================
-  // MATCH CHANGE
+  // MATCH CHANGE – fixed to not reset bowlerOvers on fixture refresh
   // ============================================================
 
   useEffect(() => {
+    const currentMatchId = selectedMatch?.id || null;
+    const matchChanged = prevMatchIdRef.current !== currentMatchId;
+
     if (
       selectedMatch &&
       allTeams.length > 0 &&
@@ -664,6 +673,13 @@ function AddCommentary({
       setSelectedExtraRuns(0);
       setNote("");
 
+      // ---- Reset bowler overs and player selections only if the match changed ----
+      if (matchChanged) {
+        setSelectedBatterId("");
+        setSelectedBowlerId("");
+        setBowlerOvers({});
+      }
+
       if (foundTeams.length > 0) {
         const teamStillExists =
           previousSelectedTeamName &&
@@ -680,6 +696,7 @@ function AddCommentary({
         );
       }
     } else {
+      // No match selected – reset everything
       setMatchTeams([]);
       setSelectedTeamName("");
 
@@ -698,7 +715,11 @@ function AddCommentary({
 
       setSelectedBatterId("");
       setSelectedBowlerId("");
+      setBowlerOvers({});
     }
+
+    // Update ref after processing
+    prevMatchIdRef.current = currentMatchId;
   }, [
     selectedMatch,
     allTeams,
@@ -771,11 +792,19 @@ function AddCommentary({
       bowlingTeam.players &&
       bowlingTeam.players.length > 0
     ) {
-      setSelectedBowlerId(
-        currentBowlerIsValid
-          ? selectedBowlerId
-          : bowlingTeam.players[0].playerId,
-      );
+      const newBowlerId = currentBowlerIsValid
+        ? selectedBowlerId
+        : bowlingTeam.players[0].playerId;
+
+      setSelectedBowlerId(newBowlerId);
+
+      // Ensure bowlerOvers has an entry for the new bowler (if any)
+      if (newBowlerId && !bowlerOvers[newBowlerId]) {
+        setBowlerOvers(prev => ({
+          ...prev,
+          [newBowlerId]: "0.0",
+        }));
+      }
     } else {
       setSelectedBowlerId("");
     }
@@ -899,7 +928,8 @@ function AddCommentary({
           runsDelta: 0,
           wicketsDelta: 0,
           overs: newOversStr,
-          action: 0
+          action: 0,
+          bowlerOver: bowlerOvers[selectedBowlerId] || "0.0", // include current bowler overs
         },
       );
 
@@ -1159,6 +1189,13 @@ function AddCommentary({
           addBall(currentOvers);
       }
 
+      // ---- Compute bowler overs ----
+      let newBowlerOver: string | undefined;
+      if (!isFootball && BALL_CONSUMING_ACTIONS.has(selectedActionType)) {
+        const currentBowlerOver = bowlerOvers[selectedBowlerId] || "0.0";
+        newBowlerOver = addBall(currentBowlerOver);
+      }
+
       // ========================================================
       // API PAYLOAD
       //
@@ -1195,7 +1232,7 @@ function AddCommentary({
           commentaryPayload,
         );
 
-        // 2. Update score / overs
+        // 2. Update score / overs / bowler overs
         if (!isFootball) {
           await updateScoreFixtures(
             selectedFixtureId,
@@ -1210,6 +1247,7 @@ function AddCommentary({
                 overs[selectedTeamName] ??
                 "0.0",
               wicketsDelta,
+              bowlerOver: newBowlerOver || bowlerOvers[selectedBowlerId] || "0.0", // send updated or current
             },
           );
 
@@ -1217,6 +1255,14 @@ function AddCommentary({
             setOvers((prev) => ({
               ...prev,
               [selectedTeamName]: newOvers,
+            }));
+          }
+
+          // Update local bowler overs
+          if (newBowlerOver) {
+            setBowlerOvers(prev => ({
+              ...prev,
+              [selectedBowlerId]: newBowlerOver,
             }));
           }
         } else {
@@ -1230,6 +1276,7 @@ function AddCommentary({
               runsDelta,
               wicketsDelta: 0,
               overs: "",
+              bowlerOver: "", // not used for football
             },
           );
         }
@@ -1898,7 +1945,12 @@ function AddCommentary({
                         {
                           player.role
                         }
-                        )
+                        ){" "}
+                        {!isFootball && (
+                          <span style={{ fontSize: "10px", color: "#8d96aa" }}>
+                            (Overs: {bowlerOvers[player.playerId] || "0.0"})
+                          </span>
+                        )}
                       </option>
                     ),
                   )
