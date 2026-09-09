@@ -11,6 +11,23 @@
 
 }
 
+.match-grid__toggle {
+    display: block;
+    margin: 0 auto 20px;
+    padding: 10px 18px;
+    border: 1px solid #2d3647;
+    border-radius: 8px;
+    background: #1a212d;
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.match-grid__toggle:hover {
+    border-color: #4d607d;
+    background: #222c3b;
+}
+
 .match-card{
 
     background:#1a212d;

@@ -23,6 +23,7 @@ function NVianDashboard() {
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(
     null,
   );
+  const [showAllMatches, setShowAllMatches] = useState(false);
 
   const filteredMatches =
     selectedSportId === "all"
@@ -30,6 +31,9 @@ function NVianDashboard() {
       : matches.filter((m) => m.sportId === selectedSportId);
 
   const matchCards = filteredMatches.map(mapFixtureToMatchCard);
+  const visibleMatchCards = showAllMatches
+    ? matchCards
+    : matchCards.slice(0, 8);
 
   const selectedFixture = matchCards.find((x) => x.id === selectedFixtureId);
 
@@ -38,6 +42,10 @@ function NVianDashboard() {
       setSelectedFixtureId(matchCards.length > 0 ? matchCards[0].id : null);
     }
   }, [matchCards, selectedFixtureId]);
+
+  useEffect(() => {
+    setShowAllMatches(false);
+  }, [selectedSportId, searchTerm]);
 
   return (
     <main className="container">
@@ -50,11 +58,24 @@ function NVianDashboard() {
       {loading ? (
         <section className="dashboard-empty-state">Loading...</section>
       ) : matchCards.length > 0 ? (
-        <MatchGrid
-          matches={matchCards}
-          selectedFixtureId={selectedFixtureId}
-          onMatchSelect={(match) => setSelectedFixtureId(match.id)}
-        />
+        <>
+          <MatchGrid
+            matches={visibleMatchCards}
+            selectedFixtureId={selectedFixtureId}
+            onMatchSelect={(match) => setSelectedFixtureId(match.id)}
+          />
+          {matchCards.length > 8 && (
+            <button
+              type="button"
+              className="match-grid__toggle"
+              onClick={() => setShowAllMatches((expanded) => !expanded)}
+            >
+              {showAllMatches
+                ? "Show fewer matches"
+                : `See more matches (${matchCards.length - 8})`}
+            </button>
+          )}
+        </>
       ) : (
         <section className="dashboard-empty-state">
           {searchTerm.trim()
