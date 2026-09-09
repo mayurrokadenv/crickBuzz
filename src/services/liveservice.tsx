@@ -231,6 +231,7 @@ export const updateScoreFixtures = async (
     runsDelta?: number;
     wicketsDelta?: number;
     overs?: string;
+    bowlerOver?: string;
   },
 ) => {
   const res = await fetch(`${API_URL}/fixtures/${fixtureId}/score`, {

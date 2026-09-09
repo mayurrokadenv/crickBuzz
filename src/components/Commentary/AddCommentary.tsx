@@ -606,7 +606,8 @@ function AddCommentary({
   // ============================================================
 
   useEffect(() => {
-    const currentMatchId = selectedMatch?.id || null;
+    const currentMatchId =
+      selectedMatch?.id != null ? String(selectedMatch.id) : null;
     const matchChanged = prevMatchIdRef.current !== currentMatchId;
 
     if (
