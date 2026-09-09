@@ -13,7 +13,6 @@ import MatchInfo from "../../components/MatchDetails/MatchInfo";
 import MatchCommentary from "../../components/MatchDetails/MatchCommentary";
 import ScoreCard from "../../components/MatchDetails/ScoreCard";
 import LiveMatchDetails from "../../components/MatchDetails/LiveMatchDetails";
-import { useCommentaryFeed } from "../../hooks/useCommentaryFeed";
 import type { MatchCommentaryModel } from "../../components/types/MatchDetailsModel";
 import type { CricbuzzScorecardResponse } from "../../components/types/CricbuzzScorecard";
 
@@ -32,8 +31,6 @@ import type {
 import FixtureScoreCard, {
   type FixtureScorecard,
 } from "../../components/MatchDetails/FixtureScorecard";
-
-//import type {CricbuzzScorecardResponse} from "../../components/types/CricbuzzScorecard";
 
 function MatchDetailsPage() {
   const { matchId } = useParams();
@@ -84,24 +81,19 @@ function MatchDetailsPage() {
   };
 
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
   const [scorecardLoading, setScorecardLoading] = useState(false);
-
   const [scorecardError, setScorecardError] = useState<string | null>(null);
 
   const [fixtureScorecardLoading, setFixtureScorecardLoading] = useState(false);
-
   const [fixtureScorecardError, setFixtureScorecardError] = useState<
     string | null
   >(null);
 
-  // LOAD MATCH DETAILS
-
+  // ---------- LOAD MATCH DETAILS (initial request) ----------
   useEffect(() => {
     let ignore = false;
-    let timeoutId: number;
 
     const loadMatchDetails = async () => {
       if (!matchId) {
@@ -117,7 +109,6 @@ function MatchDetailsPage() {
       }
 
       try {
-        // Sirf first load pe loader dikhao
         if (!matchDetails) {
           setLoading(true);
         }
@@ -138,9 +129,6 @@ function MatchDetailsPage() {
       } finally {
         if (!ignore) {
           setLoading(false);
-
-          // Next poll after 1 minute
-          timeoutId = window.setTimeout(loadMatchDetails, 60000);
         }
       }
     };
@@ -149,50 +137,14 @@ function MatchDetailsPage() {
 
     return () => {
       ignore = true;
-      clearTimeout(timeoutId);
     };
   }, [matchId, source]);
 
-  // When user switches to Live tab, fetch latest match details immediately
+  // ---------- LOAD SCORECARD for Cricbuzz (only on Scorecard tab) ----------
   useEffect(() => {
-    if (activeTab !== "Live") return;
-    if (!matchId) return;
-
-    let ignore = false;
-
-    const refresh = async () => {
-      try {
-        const response = await getMatchDetails(matchId, source);
-        if (!ignore) setMatchDetails(response);
-      } catch (err) {
-        console.error("Failed to refresh match details on tab switch", err);
-      }
-    };
-
-    refresh();
-
-    return () => {
-      ignore = true;
-    };
-  }, [activeTab, matchId, source]);
-
-  // LOAD SCORECARD Only when Scorecard tab is opened (Cricbuzz matches)
-
-  useEffect(() => {
-    // Don't call API until Scorecard tab is selected
-    if (activeTab !== "Scorecard") {
-      return;
-    }
-
-    // Scorecard sirf Cricbuzz ke liye hai
-    if (source !== "cricbuzz") {
-      return;
-    }
-
-    // Invalid match ID
-    if (!matchId || Number.isNaN(Number(matchId))) {
-      return;
-    }
+    if (activeTab !== "Scorecard") return;
+    if (source !== "cricbuzz") return;
+    if (!matchId || Number.isNaN(Number(matchId))) return;
 
     let ignore = false;
 
@@ -226,22 +178,11 @@ function MatchDetailsPage() {
     };
   }, [activeTab, matchId, source]);
 
-  // LOAD SCORECARD Only when Scorecard tab is opened (Fixture matches)
-
+  // ---------- LOAD SCORECARD for Fixture (always, regardless of tab) ----------
   useEffect(() => {
-    // Don't call API until Scorecard tab is selected
-    if (activeTab !== "Scorecard") {
-      return;
-    }
-
-    // Scorecard sirf fixture matches ke liye
-    if (source !== "fixture") {
-      return;
-    }
-
-    if (!matchId) {
-      return;
-    }
+    // Only for fixture matches
+    if (source !== "fixture") return;
+    if (!matchId) return;
 
     let ignore = false;
 
@@ -273,10 +214,9 @@ function MatchDetailsPage() {
     return () => {
       ignore = true;
     };
-  }, [activeTab, matchId, source]);
+  }, [matchId, source]); // No dependency on activeTab – loads on mount
 
-  // PAGE STATES
-
+  // ---------- PAGE STATES ----------
   if (loading) {
     return (
       <div className="match-details-page__state">Loading match details...</div>
@@ -302,8 +242,7 @@ function MatchDetailsPage() {
       // -------------------------------------------------------
       // LIVE
       // -------------------------------------------------------
-
-      case "Live":
+      case "Live": {
         if (!matchDetails.live) {
           return (
             <div className="match-details-page__state">
@@ -313,17 +252,18 @@ function MatchDetailsPage() {
           );
         }
 
+        // Show only the current batsmen and bowler – do NOT pass scorecards
         return (
           <LiveMatchDetails
             live={matchDetails.live}
             fixtureId={matchId ?? ""}
           />
         );
+      }
 
       // -------------------------------------------------------
       // SCORECARD
       // -------------------------------------------------------
-
       case "Scorecard": {
         // ---- FIXTURE MATCHES ----
         if (source === "fixture") {
@@ -388,6 +328,9 @@ function MatchDetailsPage() {
         return <ScoreCard scorecards={scorecard.scoreCard as any} />;
       }
 
+      // -------------------------------------------------------
+      // COMMENTARY
+      // -------------------------------------------------------
       case "Commentary": {
         if (source === "fixture") {
           return (
@@ -415,7 +358,6 @@ function MatchDetailsPage() {
       // -------------------------------------------------------
       // STATS
       // -------------------------------------------------------
-
       case "Stats":
         if (!matchDetails.live) {
           return (
@@ -426,15 +368,6 @@ function MatchDetailsPage() {
         }
 
         return <MatchStats live={matchDetails.live} />;
-
-      // -------------------------------------------------------
-      // SQUADS
-      // -------------------------------------------------------
-
-      // case "Squads":
-      //   return (
-      //     <div className="match-details-page__state">Squads coming next...</div>
-      //   );
 
       default:
         return null;
@@ -447,11 +380,7 @@ function MatchDetailsPage() {
 
   return (
     <main className="match-details-page">
-      {/* MATCH HEADER */}
-
       <MatchHeader header={matchDetails.header} />
-
-      {/* MATCH SUMMARY */}
 
       {matchDetails.live ? (
         <MatchSummary header={matchDetails.header} live={matchDetails.live} />
@@ -461,18 +390,10 @@ function MatchDetailsPage() {
         </div>
       )}
 
-      {/* MATCH TABS */}
-
       <MatchTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
-      {/* MAIN CONTENT */}
-
       <section className="match-details-page__content">
-        {/* LEFT SIDE - ACTIVE TAB CONTENT */}
-
         <div className="match-details-page__left">{renderTabContent()}</div>
-
-        {/* RIGHT SIDE - COMMON MATCH INFO */}
 
         <aside className="match-details-page__right">
           <MatchInfo header={matchDetails.header} />
