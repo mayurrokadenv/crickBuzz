@@ -36,6 +36,18 @@
     gap:24px;
 }
 
+.match-details-page__state {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:180px;
+    text-align:center;
+    width:100%;
+    font-size:25px;
+    color:#eeeaea;
+    font-weight:600;
+}
+
 @media(max-width:992px){
 
     .match-details-page__content{

@@ -11,18 +11,20 @@ export type MatchTab =
 type MatchTabsProps = {
   activeTab: MatchTab;
   onTabChange: (tab: MatchTab) => void;
+  showStats?: boolean;
 };
 
 function MatchTabs({
   activeTab,
-  onTabChange
+  onTabChange,
+  showStats = true,
 }: MatchTabsProps) {
 
   const tabs: MatchTab[] = [
     "Live",
     "Scorecard",
     "Commentary",
-    "Stats",
+    ...(showStats ? ["Stats" as const] : []),
     // "Squads"
   ];
 

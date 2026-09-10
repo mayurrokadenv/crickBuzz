@@ -118,6 +118,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
             homeTeamId: fixture.home,
             awayTeamId: fixture.away,
             scheduledAtUtc: new Date(fixture.scheduledAtUtc).toISOString(),
+            totalOvers: isCricket ? fixture.totalOvers : undefined, // Include totalOvers only for cricket
         };
 
 

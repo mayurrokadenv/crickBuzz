@@ -35,12 +35,13 @@ import FixtureScoreCard, {
 function MatchDetailsPage() {
   const { matchId } = useParams();
 
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const source: MatchSource = pathname.startsWith("/fixture")
     ? "fixture"
     : "cricbuzz";
+  const showStats = (state as { dashboard?: string } | null)?.dashboard !== "nvian";
 
   const [matchDetails, setMatchDetails] = useState<MatchDetailsModel | null>(
     null,
@@ -55,20 +56,20 @@ function MatchDetailsPage() {
 
   const requestedTab = searchParams.get("tab");
   const initialTab: MatchTab =
-    requestedTab === "Scorecard" ||
-    requestedTab === "Commentary" ||
-    requestedTab === "Stats"
+    requestedTab === "Scorecard" || requestedTab === "Commentary"
       ? requestedTab
-      : "Live";
+      : requestedTab === "Stats" && showStats
+        ? "Stats"
+        : "Live";
   const [activeTab, setActiveTab] = useState<MatchTab>(initialTab);
 
   useEffect(() => {
     const nextTab: MatchTab =
-      requestedTab === "Scorecard" ||
-      requestedTab === "Commentary" ||
-      requestedTab === "Stats"
+      requestedTab === "Scorecard" || requestedTab === "Commentary"
         ? requestedTab
-        : "Live";
+        : requestedTab === "Stats" && showStats
+          ? "Stats"
+          : "Live";
 
     setActiveTab((currentTab) =>
       currentTab === nextTab ? currentTab : nextTab,
@@ -359,6 +360,10 @@ function MatchDetailsPage() {
       // STATS
       // -------------------------------------------------------
       case "Stats":
+        if (!showStats) {
+          return <div className="match-details-page__state">Live</div>;
+        }
+
         if (!matchDetails.live) {
           return (
             <div className="match-details-page__state">
@@ -390,7 +395,11 @@ function MatchDetailsPage() {
         </div>
       )}
 
-      <MatchTabs activeTab={activeTab} onTabChange={handleTabChange} />
+      <MatchTabs
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        showStats={showStats}
+      />
 
       <section className="match-details-page__content">
         <div className="match-details-page__left">{renderTabContent()}</div>
