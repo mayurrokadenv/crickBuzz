@@ -3,6 +3,7 @@ import "./FixtureList.css";
 import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
 import { fixtureService, type Fixture } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
+import Loader from "../Loader/Loader";
 
 interface EditableFixture extends Fixture {
   homeOvers?: string;
@@ -335,7 +336,7 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <Loader label="Loading fixtures..." fullWidth />;
 
   return (
     <div className="fixture-list">

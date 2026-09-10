@@ -2,6 +2,7 @@ import React, { type ChangeEvent, useEffect, useMemo, useRef, useState } from "r
 import type { FeedingMatchs } from "../../services/match.types";
 import { getLiveMatches } from "../../services/liveservice";
 import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import Loader from "../Loader/Loader";
 import "./FeedingMatch.css";
 
 const FEEDING_MATCH_REFRESH_EVENT = "crickbuzz-live-feeds-refresh";
@@ -140,7 +141,7 @@ const FeedingMatchComponent = ({
   if (loading) {
     return (
       <div className="feeding-match-container">
-        <div className="loading-state">Loading live matches...</div>
+        <Loader label="Loading live matches..." />
       </div>
     );
   }

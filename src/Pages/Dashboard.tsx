@@ -2,6 +2,7 @@ import Header from "../components/Header/Header";
 import SportTabs from "../components/SportTabs/SportTabs";
 import MatchGrid from "../components/MatchGrid/MatchGrid";
 import TopPerformers from "../components/TopPerformers/TopPerformers";
+import Loader from "../components/Loader/Loader";
 import LiveCommentary from "../components/Commentary/LiveCommentary";
 import SearchBar from "../components/Search/SearchBar";
 import {useState,useEffect} from "react";
@@ -60,7 +61,7 @@ const matchCards = matches.map(mapCricbuzzMatchToCard);
 
             {loading ? (
               <section className="dashboard-empty-state">
-                Loading...
+                <Loader label="Loading matches..." fullWidth />
               </section>
             ) : matchCards.length > 0 ? (
 

@@ -31,6 +31,7 @@ import type {
 import FixtureScoreCard, {
   type FixtureScorecard,
 } from "../../components/MatchDetails/FixtureScorecard";
+import Loader from "../../components/Loader/Loader";
 
 function MatchDetailsPage() {
   const { matchId } = useParams();
@@ -219,9 +220,7 @@ function MatchDetailsPage() {
 
   // ---------- PAGE STATES ----------
   if (loading) {
-    return (
-      <div className="match-details-page__state">Loading match details...</div>
-    );
+    return <Loader label="Loading match details..." fullWidth />;
   }
 
   if (error) {
@@ -270,11 +269,7 @@ function MatchDetailsPage() {
         // ---- FIXTURE MATCHES ----
         if (source === "fixture") {
           if (fixtureScorecardLoading) {
-            return (
-              <div className="match-details-page__state">
-                Loading scorecard...
-              </div>
-            );
+            return <Loader label="Loading scorecard..." fullWidth />;
           }
 
           if (fixtureScorecardError) {
@@ -298,11 +293,7 @@ function MatchDetailsPage() {
 
         // ---- CRICBUZZ MATCHES ----
         if (scorecardLoading) {
-          return (
-            <div className="match-details-page__state">
-              Loading scorecard...
-            </div>
-          );
+          return <Loader label="Loading scorecard..." fullWidth />;
         }
 
         if (scorecardError) {

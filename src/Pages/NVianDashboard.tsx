@@ -12,6 +12,7 @@ import {
 } from "../services/MatchDataService";
 import TopPerformers from "../components/TopPerformers/TopPerformers";
 import NVianLiveSummary from "../components/NVianLiveSummary/NVianLiveSummary";
+import Loader from "../components/Loader/Loader";
 import { useNVianDashboardSearch } from "../context/NVianDashboardSearchContext";
 import "./Dashboard.css";
 
@@ -56,7 +57,9 @@ function NVianDashboard() {
         onSportChange={setSelectedSportId}
       />
       {loading ? (
-        <section className="dashboard-empty-state">Loading...</section>
+        <section className="dashboard-empty-state">
+          <Loader label="Loading matches..." fullWidth />
+        </section>
       ) : matchCards.length > 0 ? (
         <>
           <MatchGrid

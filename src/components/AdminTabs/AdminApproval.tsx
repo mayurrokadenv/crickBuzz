@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { approveAdmin, getAdminApprovalRequests ,type  AdminApprovalRequest } from "../../services/adminservice";
 import "./AdminApproval.css";
 import { showError, showSuccess } from "../../services/common/AlertService";
+import Loader from "../Loader/Loader";
 
 function AdminApproval() {
 
@@ -57,7 +58,7 @@ const handleReject = (id: string) => {
     };
 
     if (loading) {
-        return <p>Loading approval requests...</p>;
+        return <Loader label="Loading approval requests..." fullWidth />;
     }
 
     if (error) {

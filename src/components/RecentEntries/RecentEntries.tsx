@@ -1,4 +1,5 @@
 import "./RecentEntries.css";
+import Loader from "../Loader/Loader";
 import { useEffect, useState } from "react";
 import {
   getCommentary,
@@ -164,7 +165,7 @@ function RecentEntries({ fixtureId, refreshTrigger }: RecentEntriesProps) {
         {!fixtureId && (
           <div className="empty-state">Select a match to see commentary.</div>
         )}
-        {loading && <div className="loading-state">Loading commentary...</div>}
+        {loading && <Loader label="Loading commentary..." />}
         {error && <div className="error-state">{error}</div>}
         {fixtureId && !loading && !error && entries.length === 0 && (
           <div className="empty-state">

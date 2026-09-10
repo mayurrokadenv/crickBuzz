@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getFixtureMatchDetails } from "../../services/MatchDataService";
 import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import Loader from "../Loader/Loader";
 import { useCommentaryFeed } from "../../hooks/useCommentaryFeed";
 import type { FixtureDetailsDto } from "../types/FixtureDetails";
 import "./NVianLiveSummary.css";
@@ -68,7 +69,7 @@ function NVianLiveSummary({ fixtureId }: Props) {
       <section className="nvian-live-summary">
         <div className="nvian-live-summary__item">
           <span>Live match summary</span>
-          <strong>Loading...</strong>
+          <Loader label="Loading match summary..." size="small" />
         </div>
       </section>
     );
