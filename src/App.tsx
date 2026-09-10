@@ -16,6 +16,7 @@ import RegistrationForm from "./Pages/RegistrationForm.tsx";
 import { NVianDashboardSearchProvider } from "./context/NVianDashboardSearchContext.tsx";
 import { DashboardSearchProvider } from "./context/DashboardSearchContext.tsx";
 import { RegistrationProvider } from "./context/RegistrationContext.tsx";
+import Series from "./Pages/Admin/Series.tsx";
 
 function App() {
     return (
@@ -47,6 +48,7 @@ function App() {
                                 <Route path="fixtures" element={<Fixtures />} />
                                 <Route path="teams-players" element={<TeamsPlayers />} />
                                 <Route path="commentary" element={<Commentary />} />
+                                <Route path="series" element={<Series />} />
                             </Route>
 
                             <Route

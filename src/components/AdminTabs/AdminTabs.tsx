@@ -27,6 +27,12 @@ export default function AdminTabs({ activeTab, onTabChange }: Props) {
             >
                 Fixtures
             </button>
+            <button
+                onClick={() => onTabChange("series")}
+                className={activeTab === "series" ? "active" : ""}
+            >
+                Series
+            </button>
         </div>
     );
 }

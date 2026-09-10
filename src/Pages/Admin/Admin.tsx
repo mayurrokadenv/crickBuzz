@@ -6,7 +6,7 @@ import AdminTabs from "../../components/AdminTabs/AdminTabs";
 import type { FeedingMatchs as FeedingMatchType } from "../../services/match.types";
 import "./Admin.css";
 
-export type TabType = "commentary" | "teams" | "fixtures";
+export type TabType = "commentary" | "teams" | "fixtures" | "series";
 
 export interface AdminOutletContext {
     selectedMatch: FeedingMatchType | null;
@@ -20,6 +20,7 @@ export interface AdminOutletContext {
 function pathToTab(pathname: string): TabType {
     if (pathname.startsWith("/admin/teams-players")) return "teams";
     if (pathname.startsWith("/admin/fixtures")) return "fixtures";
+    if (pathname.startsWith("/admin/series")) return "series";
     return "commentary";
 }
 
@@ -65,6 +66,7 @@ function Admin() {
         const path =
             tab === "commentary" ? "/admin/commentary" :
             tab === "teams" ? "/admin/teams-players" :
+            tab === "series" ? "/admin/series" :
             "/admin/fixtures";
         navigate(path);
     };

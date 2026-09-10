@@ -1,0 +1,229 @@
+
+.fixture-form1 {
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    min-height: 100vh;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    color: white;
+}
+
+.left-side {
+    flex: 1;
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid #26334D;
+    height: fit-content;
+}
+
+.right-side {
+    flex: 1;
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid #26334D;
+    height: fit-content;
+    max-height: 80vh;
+    overflow-y: auto;
+
+}
+
+
+.fixture-form1 h2 {
+    margin-bottom: 8px;
+    color: #ffffff;
+    font-size: 20px;
+}
+
+.fixture-form1 p {
+    color: #888;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.fixture-form1 form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.fixture-form1 label {
+    color: #999;
+    font-size: 13px;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.fixture-form1 select,
+.fixture-form1 input {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    background: #202533;
+    border: 1px solid #30384a;
+    color: white;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.fixture-form1 select:focus,
+.fixture-form1 input:focus {
+    border-color: #3B82F6;
+}
+
+.fixture-form1 select {
+    appearance: none;
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    cursor: pointer;
+}
+
+
+.teams-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.team-toggle-btn {
+    height: 48px;
+    padding: 0 16px;
+    border-radius: 10px;
+    border: 1px solid #30384a;
+    background: #202533;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.team-toggle-btn:hover {
+    border-color: #4a5568;
+}
+
+.team-toggle-btn.active {
+    background: #d5d5d5;
+    color: black;
+    border-color: #d5d5d5;
+}
+
+
+.fixture-form1 .submit-btn {
+    margin-top: 10px;
+    height: 48px;
+    border: none;
+    border-radius: 10px;
+    background: #d5d5d5;
+    color: black;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.fixture-form1 .submit-btn:hover {
+    background: #ffffff;
+}
+
+.fixture-form1 .submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.series-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.series-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #202533;
+    border: 1px solid #30384a;
+    border-radius: 12px;
+    padding: 16px 20px;
+    gap: 20px;
+    transition: border-color 0.2s;
+}
+
+.series-card:hover {
+    border-color: #3B82F6;
+}
+
+
+.series-card__left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+}
+
+
+.sport-badge {
+    background: #3B82F6;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+
+.series-card__info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+
+.series-card__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #FFFFFF;
+    margin: 0;
+}
+
+
+.series-card__meta {
+    font-size: 13px;
+    color: #94A3B8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+
+.series-card__meta .separator {
+    color: #475569;
+}
+
+.series-card__score {
+    font-size: 14px;
+    font-weight: 600;
+    color: #E2E8F0;
+    white-space: nowrap;
+}
+
+
+.empty-state {
+    color: #64748b;
+    font-size: 14px;
+    text-align: center;
+    padding: 40px 0;
+    font-style: italic;
+}
