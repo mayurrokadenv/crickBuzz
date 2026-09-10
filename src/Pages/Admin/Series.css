@@ -1,4 +1,3 @@
-
 .fixture-form1 {
     display: flex;
     gap: 24px;
@@ -25,7 +24,6 @@
     height: fit-content;
     max-height: 80vh;
     overflow-y: auto;
-
 }
 
 
@@ -36,7 +34,7 @@
 }
 
 .fixture-form1 p {
-    color: #888;
+    color: #e8e2e2;
     margin-bottom: 20px;
     font-size: 14px;
 }
@@ -48,10 +46,10 @@
 }
 
 .fixture-form1 label {
-    color: #999;
-    font-size: 13px;
+    color: #e8e2e2;
+    font-size: 14px;
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .fixture-form1 select,
@@ -85,7 +83,34 @@
 .teams-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 12px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid #30384a;
+    border-radius: 10px;
+    background: #1a1f2e;
+    scrollbar-width: thin;
+    scrollbar-color: #3B82F6 #1a1f2e;
+}
+
+/* Webkit (Chrome/Edge/Safari) scrollbar styling */
+.teams-row::-webkit-scrollbar {
+    width: 8px;
+}
+
+.teams-row::-webkit-scrollbar-track {
+    background: #1a1f2e;
+    border-radius: 10px;
+}
+
+.teams-row::-webkit-scrollbar-thumb {
+    background: #3B82F6;
+    border-radius: 10px;
+}
+
+.teams-row::-webkit-scrollbar-thumb:hover {
+    background: #2563eb;
 }
 
 .team-toggle-btn {
@@ -103,6 +128,10 @@
     align-items: center;
     font-family: inherit;
     font-size: 14px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .team-toggle-btn:hover {
