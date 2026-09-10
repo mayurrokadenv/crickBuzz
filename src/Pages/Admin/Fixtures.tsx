@@ -7,8 +7,13 @@ function Fixtures() {
     const [refreshKey, setRefreshKey] = useState(0);
     const { loadMatches } = useNVianDashboardSearch();
 
+    const notifyLiveFeedRefresh = () => {
+        window.dispatchEvent(new CustomEvent("crickbuzz-live-feeds-refresh"));
+    };
+
     const handleFixtureSaved = async () => {
         setRefreshKey((prev) => prev + 1);
+        notifyLiveFeedRefresh();
         await loadMatches();
     };
 

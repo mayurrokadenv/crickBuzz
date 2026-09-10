@@ -11,9 +11,12 @@ type MatchCardProps = {
 };
 
 function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
-  // Subscribe to realtime score updates for this fixture (if any)
-  const { scoreByMatch } = useScoreUpdateFeed(match.id || "");
-  const realtime = match.id ? scoreByMatch[String(match.id)] : undefined;
+  const fixtureId = match.source === "internal" ? match.fixtureId : undefined;
+  const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
+
+  const realtime = fixtureId ? scoreByMatch[fixtureId] : undefined;
+
+  console.log("MatchCard: Realtime score for fixtureId:", fixtureId, realtime);
 
   const route =
     match.source === "cricbuzz" ? `/match/${match.id}` : `/fixture/${match.id}`;
@@ -21,17 +24,9 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
   const location = useLocation();
   const dashboard = location.pathname === "/nvian" ? "nvian" : "live";
 
-  const battingTeam =
-    (realtime as any)?.battingTeam ?? (match as any)?.battingTeam ?? "home";
-  const homeOvers = (realtime as any)?.homeOvers ?? match.homeOvers ?? null;
-  const awayOvers =
-    (realtime as any)?.awayOvers ?? (match as any)?.awayOvers ?? null;
-  const currentOvers =
-    battingTeam === "home"
-      ? homeOvers
-      : battingTeam === "away"
-        ? awayOvers
-        : (homeOvers ?? awayOvers);
+  const homeOvers = realtime?.homeOvers ?? match.homeOvers ?? null;
+  const awayOvers = realtime?.awayOvers ?? match.awayOvers ?? null;
+  const currentOvers = awayOvers ?? homeOvers;
 
         // console.log("Match status===========================:", match.status);
 

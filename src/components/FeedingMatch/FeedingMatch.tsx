@@ -1,24 +1,41 @@
-import React, { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import React, { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { FeedingMatchs } from "../../services/match.types";
 import { getLiveMatches } from "../../services/liveservice";
 import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
 import "./FeedingMatch.css";
 
+const FEEDING_MATCH_REFRESH_EVENT = "crickbuzz-live-feeds-refresh";
+
 interface FeedingMatchProps {
   onMatchSelect?: (match: FeedingMatchs) => void;
   onMatchesLoaded?: (matches: FeedingMatchs[]) => void;
   matches?: FeedingMatchs[];
+  selectedMatchId?: number | null;
+  onSelectedMatchIdChange?: (matchId: number) => void;
 }
 
 const FeedingMatchComponent = ({
   onMatchSelect,
   onMatchesLoaded,
   matches: externalMatches,
+  selectedMatchId: selectedMatchIdProp,
+  onSelectedMatchIdChange,
 }: FeedingMatchProps) => {
   const [feedingMatches, setFeedingMatches] = useState<FeedingMatchs[]>([]);
-  const [selectedMatchId, setSelectedMatchId] = useState<number>(0);
+  const [internalSelectedMatchId, setInternalSelectedMatchId] = useState<number>(0);
+  const selectedMatchId = selectedMatchIdProp ?? internalSelectedMatchId;
+  const selectedMatchIdRef = useRef(selectedMatchId);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  selectedMatchIdRef.current = selectedMatchId;
+
+  const selectMatch = (match: FeedingMatchs) => {
+    selectedMatchIdRef.current = match.id;
+    setInternalSelectedMatchId(match.id);
+    onSelectedMatchIdChange?.(match.id);
+    onMatchSelect?.(match);
+  };
 
   const fallbackMatches: FeedingMatchs[] = [
     {
@@ -38,17 +55,25 @@ const FeedingMatchComponent = ({
       setFeedingMatches(externalMatches);
       // If selected match ID is not in the list, select the first one
       if (!externalMatches.some((m) => m.id === selectedMatchId)) {
-        setSelectedMatchId(externalMatches[0].id);
-        // Notify parent about the new selection
-        if (onMatchSelect) {
-          onMatchSelect(externalMatches[0]);
-        }
+        selectMatch(externalMatches[0]);
       }
       setLoading(false);
     } else {
       fetchLiveMatches();
     }
   }, [externalMatches]); // Re-run when externalMatches changes
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchLiveMatches();
+    };
+
+    window.addEventListener(FEEDING_MATCH_REFRESH_EVENT, handleRefresh);
+
+    return () => {
+      window.removeEventListener(FEEDING_MATCH_REFRESH_EVENT, handleRefresh);
+    };
+  }, []);
 
   const fetchLiveMatches = async () => {
     try {
@@ -58,29 +83,23 @@ const FeedingMatchComponent = ({
       if (matches.length > 0) {
         console.log("FeedingMatch: Fetched matches:", matches);
         setFeedingMatches(matches);
-        setSelectedMatchId(matches[0].id);
+        const selected = matches.find(
+          (match) => match.id === selectedMatchIdRef.current,
+        ) ?? matches[0];
+        selectMatch(selected);
         onMatchesLoaded?.(matches);
-        if (onMatchSelect) {
-          onMatchSelect(matches[0]);
-        }
       } else {
         console.log("FeedingMatch: Using fallback matches");
         setFeedingMatches(fallbackMatches);
-        setSelectedMatchId(fallbackMatches[0].id);
+        selectMatch(fallbackMatches[0]);
         onMatchesLoaded?.(fallbackMatches);
-        if (onMatchSelect) {
-          onMatchSelect(fallbackMatches[0]);
-        }
       }
     } catch (error) {
       console.error("FeedingMatch: Error fetching:", error);
       setError("Failed to load live matches. Showing demo data.");
       setFeedingMatches(fallbackMatches);
-      setSelectedMatchId(fallbackMatches[0].id);
+      selectMatch(fallbackMatches[0]);
       onMatchesLoaded?.(fallbackMatches);
-      if (onMatchSelect) {
-        onMatchSelect(fallbackMatches[0]);
-      }
     } finally {
       setLoading(false);
     }
@@ -92,9 +111,13 @@ const FeedingMatchComponent = ({
   }, [selectedMatchId, feedingMatches]);
 
   const { scoreByMatch } = useScoreUpdateFeed(selectedMatch?.fixtureId ?? "");
+  console.log("FeedingMatch: Score updates in FeedingMatch:====================>", scoreByMatch);
   const realtime = selectedMatch?.fixtureId
     ? scoreByMatch[selectedMatch.fixtureId]
     : undefined;
+
+
+    console.log("FeedingMatch: Realtime score for fixtureId in FeedingMatch==============>", selectedMatch?.fixtureId, ":", realtime);
   const displayedMatch =
     realtime && selectedMatch
       ? {
@@ -108,10 +131,9 @@ const FeedingMatchComponent = ({
   const handleMatchChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const newId = Number(e.target.value);
     console.log("FeedingMatch: Match changed to ID:", newId);
-    setSelectedMatchId(newId);
     const match = feedingMatches.find((m) => m.id === newId);
-    if (match && onMatchSelect) {
-      onMatchSelect(match);
+    if (match) {
+      selectMatch(match);
     }
   };
 

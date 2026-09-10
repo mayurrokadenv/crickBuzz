@@ -29,6 +29,7 @@ function Admin() {
     const activeTab = pathToTab(location.pathname);
 
     const [selectedMatch, setSelectedMatch] = useState<FeedingMatchType | null>(null);
+    const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
     const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null);
     const [refreshTick, setRefreshTick] = useState(0);
     const [feedingMatches, setFeedingMatches] = useState<FeedingMatchType[]>([]);
@@ -36,6 +37,7 @@ function Admin() {
     const handleMatchSelect = (match: FeedingMatchType) => {
         console.log("Admin: Match selected:", match);
         setSelectedMatch(match);
+        setSelectedMatchId(match.id);
     };
 
     const handleMatchesLoaded = (matches: FeedingMatchType[]) => {
@@ -84,6 +86,8 @@ function Admin() {
                 onMatchSelect={handleMatchSelect} 
                 onMatchesLoaded={handleMatchesLoaded}
                 matches={feedingMatches}
+                selectedMatchId={selectedMatchId}
+                onSelectedMatchIdChange={setSelectedMatchId}
             />
 
             <section className="admin-page">

@@ -40,7 +40,7 @@ interface Innings {
 type LiveMatchDetailsProps = {
   live: MatchLiveModel;
   fixtureId?: string;
-  scorecards?: Innings[];   // new prop
+  scorecards?: Innings[];   // initial scorecards from parent
 };
 
 function LiveMatchDetails({ live, fixtureId, scorecards }: LiveMatchDetailsProps) {
@@ -59,38 +59,48 @@ function LiveMatchDetails({ live, fixtureId, scorecards }: LiveMatchDetailsProps
   } = live;
 
   const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
+
   const realtime = fixtureId ? scoreByMatch[fixtureId] : undefined;
 
-  const hasScorecards = scorecards && scorecards.length > 0;
+  // ============================================================
+  // PRIORITIZE REALTIME SCORECARDS OVER INITIAL PROP
+  // ============================================================
+  const activeScorecards = realtime?.scorecards || scorecards || live.scorecards;
+  const hasScorecards = activeScorecards && activeScorecards.length > 0;
+  
   const sortedInnings = hasScorecards
-    ? [...scorecards].sort((a, b) => a.inningsNo - b.inningsNo)
+    ? [...activeScorecards].sort((a, b) => a.inningsNo - b.inningsNo)
     : [];
 
+  // Determine the current innings to figure out which team is batting
+  const currentInnings = sortedInnings.length > 0 ? sortedInnings[sortedInnings.length - 1] : null;
 
-    console.log("Livematch details bowlerStriker==================", bowlerStriker);
+  // Determine if the home team is batting based on the current innings or fallback
+  const isHomeBatting = (batTeam as any)?.isHome ?? 
+    (currentInnings ? currentInnings.battingTeamId === (live as any)?.homeTeamId : true);
+
+  // Format the current score dynamically
+  const displayScore = realtime
+    ? isHomeBatting
+      ? `${realtime.homeScore}/${realtime.homeWickets ?? 0}`
+      : `${realtime.awayScore}/${realtime.awayWickets ?? 0}`
+    : `${batTeam?.teamScore ?? 0}/${batTeam?.teamWkts ?? 0}`;
+
+  // Format the current overs dynamically
+  const displayOvers = realtime
+    ? isHomeBatting
+      ? realtime.homeOvers ?? "0.0"
+      : realtime.awayOvers ?? "0.0"
+    : overs ?? (batTeam as any)?.homeOvers ?? "0.0";
+
   return (
     <section className="live-match-details">
       {/* ----- Current Score (from live feed) ----- */}
       <div className="live-match-details__score">
         <div>
           <span className="live-match-details__label">Current Score</span>
-          <h2>
-            {realtime
-              ? `${realtime.homeScore}/${realtime.homeWickets ?? 0}`
-              : `${batTeam?.teamScore ?? 0}/${batTeam?.teamWkts ?? 0}`}
-          </h2>
-          <span>
-            {overs
-              ? `${overs} Overs`
-              : realtime
-                ? `${realtime.homeOvers ?? 0} Overs`
-                : (() => {
-                    const isHomeBatting = (batTeam as any)?.isHome ?? true;
-                    return isHomeBatting
-                      ? `${batTeam?.homeOvers ?? 0} Overs`
-                      : `${(batTeam as any)?.awayOvers ?? 0} Overs`;
-                  })()}
-          </span>
+          <h2>{displayScore}</h2>
+          <span>{displayOvers} Overs</span>
         </div>
 
         <div className="live-match-details__rates">
@@ -144,7 +154,6 @@ function LiveMatchDetails({ live, fixtureId, scorecards }: LiveMatchDetailsProps
               </div>
             </div>
 
-            {/* Bowling figures – this is the "bowler details" from the scorecard */}
             <div className="live-match-details__section">
               <h4>Bowling</h4>
               <div className="live-match-details__table">
@@ -157,7 +166,6 @@ function LiveMatchDetails({ live, fixtureId, scorecards }: LiveMatchDetailsProps
                   <span>ECO</span>
                 </div>
                 {innings.bowlingFigures.map((bowler) => (
-                  console.log("Bowler details from scorecard:", bowler),
                   <div key={bowler.playerId} className="live-match-details__bowling-row">
                     <span>{bowler.playerName}</span>
                     <span>{bowler.overs}</span>

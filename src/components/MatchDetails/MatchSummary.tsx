@@ -14,7 +14,11 @@ type MatchSummaryProps = {
 function MatchSummary({ header, live }: MatchSummaryProps) {
   const fixtureId = header.matchId || "";
   const { scoreByMatch } = useScoreUpdateFeed(String(fixtureId));
+
+  console.log("MatchSummary: Score updates in MatchSummary:====================>", scoreByMatch);
   const realtime = fixtureId ? scoreByMatch[String(fixtureId)] : undefined;
+
+  console.log("MatchSummary: Realtime score for fixtureId in MatchSummary==============>", fixtureId, ":", realtime);
 
   const innings = live.matchScoreDetails.inningsScoreList;
 
@@ -27,35 +31,35 @@ function MatchSummary({ header, live }: MatchSummaryProps) {
   );
 
   const formatScore = (teamInnings: typeof innings, teamId: string) => {
+    const homeScoreValue =
+      realtime?.homeScore ?? live?.batTeam?.homeScore ?? live?.batTeam?.teamScore ?? null;
+    const awayScoreValue =
+      realtime?.awayScore ?? live?.batTeam?.awayScore ?? null;
+
     const liveScoreForTeam =
       teamId === header.team1.id
-        ? realtime
-          ? `${realtime.homeScore}/${realtime.homeWickets ?? 0}`
+        ? homeScoreValue !== null
+          ? `${homeScoreValue}/${realtime?.homeWickets ?? live?.batTeam?.homeWickets ?? 0}`
           : undefined
         : teamId === header.team2.id
-          ? realtime
-            ? `${realtime.awayScore}/${realtime.awayWickets ?? 0}`
+          ? awayScoreValue !== null
+            ? `${awayScoreValue}/${realtime?.awayWickets ?? live?.batTeam?.awayWickets ?? 0}`
             : undefined
           : undefined;
 
-    // Prefer realtime overs if available, otherwise fall back to live data
     const homeOvers =
       realtime?.homeOvers ?? live?.batTeam?.homeOvers ?? live?.overs ?? null;
-    const awayOvers = realtime?.awayOvers ?? (live as any)?.awayOvers ?? null;
+    const awayOvers =
+      realtime?.awayOvers ?? live?.batTeam?.awayOvers ?? null;
     const currentOversForTeam =
       teamId === header.team1.id ? homeOvers : awayOvers;
 
-    // If we have a realtime score for this team, show it immediately
     if (liveScoreForTeam) {
       return `${liveScoreForTeam} (${currentOversForTeam ?? 0})`;
     }
 
     if (teamInnings.length === 0) {
       const battingTeamId = live?.batTeam?.teamId;
-
-      if (battingTeamId === teamId && liveScoreForTeam) {
-        return `${liveScoreForTeam} (${currentOversForTeam ?? 0})`;
-      }
 
       if (battingTeamId === teamId) {
         return `${live?.batTeam?.teamScore ?? 0}/${live?.batTeam?.teamWkts ?? 0} (${homeOvers ?? 0})`;

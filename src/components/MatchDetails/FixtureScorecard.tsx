@@ -116,8 +116,33 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
 
   const realtime = fixture?.id ? scoreByMatch[fixture.id] : undefined;
 
+  // ============================================================
+  // PRIORITIZE REALTIME DATA OVER INITIAL FIXTURE PROP
+  // ============================================================
+
+  // If the realtime payload has scorecards, use those. Otherwise
+  // fall back to the fixture prop (initial page load data).
+  const activeScorecards =
+    realtime?.scorecards && realtime.scorecards.length > 0
+      ? realtime.scorecards
+      : fixture?.scorecards ?? [];
+
+  // Commentary: allow future realtime override, fall back to fixture prop
+  const activeCommentary =
+    (realtime as any)?.commentary ?? fixture?.commentary ?? [];
+
+  // Top performers: allow future realtime override, fall back to fixture prop
+  const activeTopPerformers =
+    (realtime as any)?.topPerformers ?? fixture?.topPerformers ?? [];
+
+  // Status: prefer realtime if provided, else fall back to fixture prop
+  const activeStatus =
+    (realtime as any)?.status ?? fixture?.status ?? "Scheduled";
+
+  const isLive = activeStatus?.toLowerCase() === "live";
+
   const filteredCommentary = useMemo(() => {
-    const sorted = [...(fixture?.commentary ?? [])].sort(
+    const sorted = [...activeCommentary].sort(
       (a, b) =>
         new Date(b.createdAtUtc).getTime() -
         new Date(a.createdAtUtc).getTime(),
@@ -128,7 +153,7 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
     }
 
     return sorted.filter((c) => c.side === activeSide);
-  }, [fixture?.commentary, activeSide]);
+  }, [activeCommentary, activeSide]);
 
   if (!fixture) {
     return (
@@ -139,12 +164,6 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
       </section>
     );
   }
-
-  const topPerformers = fixture.topPerformers ?? [];
-
-  const scorecards = fixture.scorecards ?? [];
-
-  const isLive = fixture.status?.toLowerCase() === "live";
 
   return (
     <section className="score-card">
@@ -170,7 +189,7 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
         >
           {isLive && <span className="score-card__status-dot" />}
 
-          {fixture.status}
+          {activeStatus}
         </span>
       </div>
 
@@ -221,12 +240,12 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
       <div className="score-card__section">
         <h3>Scorecard</h3>
 
-        {scorecards.length === 0 ? (
+        {activeScorecards.length === 0 ? (
           <div className="score-card__empty-scorecard">
             No scorecard data available yet.
           </div>
         ) : (
-          scorecards.map((innings) => {
+          activeScorecards.map((innings) => {
             const battingTeam =
               innings.battingTeamId === fixture.homeTeamId
                 ? fixture.homeTeamName
@@ -291,8 +310,8 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
                           </td>
                         </tr>
                       ) : (
-                        innings.battingFigures.map((player) => (
-                          <tr key={player.id}>
+                        innings.battingFigures.map((player, index) => (
+                          <tr key={`${innings.id}-bat-${player.playerId || index}`}>
                             <td className="score-card__player">
                               <div className="score-card__player-name">
                                 {player.playerName}
@@ -363,8 +382,8 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
                           </td>
                         </tr>
                       ) : (
-                        innings.bowlingFigures.map((player) => (
-                          <tr key={player.id}>
+                        innings.bowlingFigures.map((player, index) => (
+                          <tr key={`${innings.id}-bowl-${player.playerId || index}`}>
                             <td className="score-card__player">
                               <div className="score-card__player-name">
                                 {player.playerName}
@@ -422,7 +441,7 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
             </thead>
 
             <tbody>
-              {topPerformers.length === 0 ? (
+              {activeTopPerformers.length === 0 ? (
                 <tr>
                   <td
                     colSpan={3}
@@ -432,7 +451,7 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
                   </td>
                 </tr>
               ) : (
-                topPerformers.map((p) => (
+                activeTopPerformers.map((p: TopPerformer) => (
                   <tr key={p.playerId}>
                     <td className="score-card__player">
                       <div className="score-card__player-name">

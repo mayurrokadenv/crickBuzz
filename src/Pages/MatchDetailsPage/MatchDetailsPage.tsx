@@ -258,6 +258,7 @@ function MatchDetailsPage() {
           <LiveMatchDetails
             live={matchDetails.live}
             fixtureId={matchId ?? ""}
+            scorecards={fixtureScorecard?.scorecards}
           />
         );
       }

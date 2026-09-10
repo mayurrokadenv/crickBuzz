@@ -46,7 +46,10 @@ function FixtureListItem({
   // the fixture id only (hook joins the correct group).
   const { scoreByMatch } = useScoreUpdateFeed(String(fixture.id));
 
+  console.log("FixtureListItem: Score updates in FixtureListItem:====================>", scoreByMatch);
   const realtime = fixture.id ? scoreByMatch[String(fixture.id)] : undefined;
+
+  console.log("FixtureListItem: Realtime score for fixtureId in FixtureList===============>", fixture.id, ":", realtime);
 
   const getLocalDateTimeString = (utcString: string) => {
   if (!utcString) return '';
@@ -304,6 +307,8 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
             : f,
         ),
       );
+
+      window.dispatchEvent(new CustomEvent("crickbuzz-live-feeds-refresh"));
 
       setEditingId(null);
     } catch (err: unknown) {

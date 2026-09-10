@@ -2,6 +2,7 @@ export type MatchSource = "cricbuzz" | "internal";
 
 export interface MatchCardModel {
   id: string;
+  fixtureId?: string;
   source: MatchSource;
 
   sport: string;

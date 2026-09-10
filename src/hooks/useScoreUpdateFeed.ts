@@ -2,6 +2,39 @@ import { useEffect, useRef, useState } from "react";
 import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
 import { createCommentaryHubConnection } from "../lib/signalrClient";
 
+// --- Add these interfaces for the nested scorecard data ---
+export interface BattingFigure {
+  playerId: string;
+  playerName: string;
+  runs: number;
+  balls: number;
+  fours: number;
+  sixes: number;
+  strikeRate: number;
+}
+
+export interface BowlingFigure {
+  playerId: string;
+  playerName: string;
+  overs: string;
+  maidens: number;
+  runs: number;
+  wickets: number;
+  noBalls: number;
+  wides: number;
+  economy: number;
+}
+
+export interface Scorecard {
+  id: string;
+  fixtureId: string;
+  inningsNo: number;
+  battingTeamId: string;
+  bowlingTeamId: string;
+  battingFigures: BattingFigure[];
+  bowlingFigures: BowlingFigure[];
+}
+
 // Shape used by UI
 export interface ScoreUpdate {
   fixtureId: string;
@@ -12,6 +45,7 @@ export interface ScoreUpdate {
   awayScore: number;
   awayWickets?: number;
   updatedAtUtc?: string;
+  scorecards?: Scorecard[]; // <-- Added this
 }
 
 // Shape received from backend SignalR
@@ -24,6 +58,7 @@ interface BackendScoreUpdate {
   awayRuns: number;
   awayWickets?: number;
   updatedAtUtc?: string;
+  scorecards?: Scorecard[]; // <-- Added this
 }
 
 const SCORE_EVENT = "ScoreUpdated";
@@ -70,12 +105,18 @@ export function useScoreUpdateFeed(fixtureId: string) {
         homeOvers: update.homeOvers,
         awayOvers: update.awayOvers,
         updatedAtUtc: update.updatedAtUtc,
+        scorecards: update.scorecards, // <-- Added this to pass the payload forward
       };
 
       setScoreByMatch((previous) => ({
         ...previous,
         [scoreUpdate.fixtureId]: scoreUpdate,
       }));
+
+      console.log("ScoreUpdated applied to scoreByMatch state:", scoreUpdate, "New state:", {
+        ...scoreByMatch,
+        [scoreUpdate.fixtureId]: scoreUpdate,
+      });
     });
 
     // ==================================================

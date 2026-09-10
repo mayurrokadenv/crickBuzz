@@ -81,6 +81,21 @@ function getFixtureBallResult(action: string): string {
   }
 }
 
+function parseOversToNumber(oversValue: unknown): number {
+  if (oversValue == null || oversValue === "") return 0;
+
+  const text = String(oversValue).trim();
+  if (!text.includes(".")) {
+    return Number(text) || 0;
+  }
+
+  const [oversPart, ballsPart = "0"] = text.split(".");
+  const overs = Number(oversPart) || 0;
+  const balls = Number(ballsPart) || 0;
+
+  return overs + balls / 6;
+}
+
 export function mapFixtureMatchDetails(
   response: FixtureDetailsDto,
 ): MatchDetailsModel {
@@ -205,6 +220,31 @@ export function mapFixtureMatchDetails(
       .join(" | ");
   })();
 
+  const inningsScoreList = [
+    {
+      inningsId: 1,
+      batTeamId: response.homeTeamId,
+      batTeamName: response.homeTeamName,
+      score: response.homeScore ?? 0,
+      wickets: response.homeWickets ?? 0,
+      overs: parseOversToNumber(response.homeOvers),
+      isDeclared: false,
+      isFollowOn: false,
+      ballNbr: 0,
+    },
+    {
+      inningsId: 2,
+      batTeamId: response.awayTeamId,
+      batTeamName: response.awayTeamName,
+      score: response.awayScore ?? 0,
+      wickets: response.awayWickets ?? 0,
+      overs: parseOversToNumber(response.awayOvers),
+      isDeclared: false,
+      isFollowOn: false,
+      ballNbr: 0,
+    },
+  ];
+
   return {
     source: "fixture",
 
@@ -299,6 +339,10 @@ export function mapFixtureMatchDetails(
       batTeam: {
         teamId: response.homeTeamId,
         teamScore: response.homeScore,
+        homeScore: response.homeScore,
+        homeWickets: response.homeWickets ?? 0,
+        awayScore: response.awayScore,
+        awayWickets: response.awayWickets ?? 0,
         homeOvers: response.homeOvers,
         awayOvers: response.awayOvers,
         teamWkts: response.homeWickets ?? 0,
@@ -329,7 +373,7 @@ export function mapFixtureMatchDetails(
       matchScoreDetails: {
         matchId: response.id,
 
-        inningsScoreList: [],
+        inningsScoreList,
 
         isMatchNotCovered: false,
 
@@ -356,15 +400,21 @@ export function mapFixtureMatchDetails(
 
       batTeamScoreObj: {
         teamName: response.homeTeamName,
-        teamInningsArray: [],
+        teamInningsArray: inningsScoreList.filter(
+          (inning) => inning.batTeamId === response.homeTeamId,
+        ),
       },
 
       bowlTeamScoreObj: {
         teamName: response.awayTeamName,
-        teamInningsArray: [],
+        teamInningsArray: inningsScoreList.filter(
+          (inning) => inning.batTeamId === response.awayTeamId,
+        ),
       },
 
       matchUdrs: null,
+
+      scorecards: response.scorecards ?? [],
     },
 
     commentary,

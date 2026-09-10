@@ -35,9 +35,13 @@ function getBallResult(action: string): string {
 function NVianLiveSummary({ fixtureId }: Props) {
   const [fixture, setFixture] = useState<FixtureDetailsDto | null>(null);
   const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
+
+  console.log("NVianLiveSummary: Score updates in NVianLiveSummary:====================>", scoreByMatch);
   const { commentaryByMatch } = useCommentaryFeed(fixtureId ?? "");
   const liveCommentary = fixtureId ? commentaryByMatch[fixtureId] : undefined;
   const realtime = fixtureId ? scoreByMatch[fixtureId] : undefined;
+
+  console.log("NVianLiveSummary: Realtime score for fixtureId in NVianLiveSummary==============>", fixtureId, ":", realtime);
 
   useEffect(() => {
     if (!fixtureId) {

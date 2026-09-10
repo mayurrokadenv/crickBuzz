@@ -1,3 +1,5 @@
+import type { Scorecard } from "../../hooks/useScoreUpdateFeed";
+
 export interface MatchDetailsModel {
   source: MatchSource;
   header: MatchHeaderModel;
@@ -146,12 +148,18 @@ export interface MatchLiveModel {
   bowlTeamScoreObj: MatchTeamScoreObjectModel;
 
   matchUdrs: unknown | null;
+
+  scorecards?: Scorecard[];
 }
 
 export interface MatchBatTeamModel {
   teamId: string;
   teamScore: number;
   teamWkts: number;
+  homeScore?: number | null;
+  homeWickets?: number | null;
+  awayScore?: number | null;
+  awayWickets?: number | null;
   homeOvers?: string | null;
   awayOvers?: string | null;
 }

@@ -5,6 +5,7 @@ import type { MatchCardModel } from "../types/MatchCardModel";
 export function mapFixtureToMatchCard(fixture: Fixture): MatchCardModel {
   return {
     id: fixture.id,
+    fixtureId: fixture.id,
     source: "internal",
 
     sport: fixture.sport,

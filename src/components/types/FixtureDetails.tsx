@@ -1,3 +1,5 @@
+import type { Scorecard } from "../../hooks/useScoreUpdateFeed";
+
 export interface FixtureDetailsDto {
   awayOvers: any;
   homeOvers: any;
@@ -17,6 +19,7 @@ export interface FixtureDetailsDto {
   awayWickets: number | null;
   commentary: CommentaryDto[];
   topPerformers: TopPerformerDto[];
+  scorecards?: Scorecard[];
   totalOvers?: string;
   sportId: string;
 }
