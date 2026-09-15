@@ -31,6 +31,7 @@ export interface Fixture {
   awayWickets: number;
   awayOvers?: string;
   phase: string;
+  battingTeamId: string;
 }
 
 const api = axios.create({
@@ -57,11 +58,13 @@ export const fixtureService = {
     status: number,
     phase: number,
     scheduledAtUtc: string,
+    battingTeamId: string
   ): Promise<Fixture> {
     const response = await api.patch(`fixtures/${id}`, {
       status,
       phase,
       scheduledAtUtc,
+      battingTeamId
     });
     console.log("Response from server==================:", response.config.url, response.status, response.statusText);
 

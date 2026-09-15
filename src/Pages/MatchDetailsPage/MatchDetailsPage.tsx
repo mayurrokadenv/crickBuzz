@@ -79,7 +79,7 @@ function MatchDetailsPage() {
 
   const handleTabChange = (tab: MatchTab) => {
     setActiveTab(tab);
-    setSearchParams({ tab }, { replace: true });
+    setSearchParams({ tab }, { replace: true, state });
   };
 
   const [loading, setLoading] = useState(true);

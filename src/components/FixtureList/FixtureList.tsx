@@ -10,7 +10,10 @@ interface EditableFixture extends Fixture {
   awayOvers?: string;
   statusValue: number;
   phaseValue: number;
+  battingTeamId?: string;
+  originalStatusValue?: number;
 }
+
 interface FixtureListProps {
   refreshKey: number;
 }
@@ -33,36 +36,47 @@ function FixtureListItem({
   handleDateChange: (index: number, value: string) => void;
   handleChange: (
     index: number,
-    field: "statusValue" | "phaseValue",
-    value: number,
+    field: "statusValue" | "phaseValue" | "battingTeamId",
+    value: number | string,
   ) => void;
   handleSave: (fixture: EditableFixture) => Promise<void>;
 }) {
-  // Live fixtures should remain editable as admin users may need to adjust
-  // phase/status after a match has started.
-  const canEdit = true
-  const hideActions = false
+  const canEdit = true;
+  const hideActions = false;
 
-  // Call the score feed hook the same way LiveMatchDetails does: pass
-  // the fixture id only (hook joins the correct group).
   const { scoreByMatch } = useScoreUpdateFeed(String(fixture.id));
 
-  console.log("FixtureListItem: Score updates in FixtureListItem:====================>", scoreByMatch);
+  console.log(
+    "FixtureListItem: Score updates in FixtureListItem:====================>",
+    scoreByMatch,
+  );
   const realtime = fixture.id ? scoreByMatch[String(fixture.id)] : undefined;
 
-  console.log("FixtureListItem: Realtime score for fixtureId in FixtureList===============>", fixture.id, ":", realtime);
+  console.log(
+    "FixtureListItem: Realtime score for fixtureId in FixtureList===============>",
+    fixture.id,
+    ":",
+    realtime,
+  );
 
   const getLocalDateTimeString = (utcString: string) => {
-  if (!utcString) return '';
-  const date = new Date(utcString + 'Z');
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
+    if (!utcString) return "";
+    const date = new Date(utcString + "Z");
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
 
+  // Safe access to team ids regardless of how the Fixture type names them.
+  const homeTeamId =
+    (fixture as unknown as { homeTeamId?: string }).homeTeamId ?? "";
+  const awayTeamId =
+    (fixture as unknown as { awayTeamId?: string }).awayTeamId ?? "";
+
+  const isCricket = fixture.sport?.toLowerCase() === "cricket";
 
   return (
     <div key={fixture.id}>
@@ -70,7 +84,6 @@ function FixtureListItem({
         <div className="fixture-card">
           <div className="row">
             <input value={fixture.homeTeamName} disabled />
-
             <input value={fixture.awayTeamName} disabled />
           </div>
 
@@ -107,14 +120,35 @@ function FixtureListItem({
                 <>
                   <option value={0}>First Innings</option>
                   <option value={1}>Second Innings</option>
-                  {/* <option value={2}>First Half</option>
-                  <option value={3}>Second Half</option>
-                  <option value={4}>Extra Time</option>
-                  <option value={5}>Penalty Shootout</option> */}
                 </>
               )}
             </select>
           </div>
+
+          {/* 👇 Batting team dropdown (cricket only) */}
+          {isCricket && (
+            <div className="row single-column">
+              <select
+                value={fixture.battingTeamId ?? ""}
+                disabled={!canEdit}
+                onChange={(e) =>
+                  handleChange(index, "battingTeamId", e.target.value)
+                }
+              >
+                <option value="">-- Select batting team --</option>
+                {homeTeamId && (
+                  <option value={homeTeamId}>
+                    {fixture.homeTeamName} (Home)
+                  </option>
+                )}
+                {awayTeamId && (
+                  <option value={awayTeamId}>
+                    {fixture.awayTeamName} (Away)
+                  </option>
+                )}
+              </select>
+            </div>
+          )}
 
           <div className="row single-column">
             <select
@@ -153,13 +187,16 @@ function FixtureListItem({
               </h4>
 
               <p>
-                {new Date(fixture.scheduledAtUtc + 'Z').toLocaleString()} • {fixture.phase} • {fixture.status}
+                {new Date(fixture.scheduledAtUtc + "Z").toLocaleString()} •{" "}
+                {fixture.phase} • {fixture.status}
               </p>
             </div>
 
             <div className="fixture-score">
               <strong>
-                {`${realtime?.homeScore ?? fixture.homeScore}/${realtime?.homeWickets ?? fixture.homeWickets ?? 0} (${realtime?.homeOvers ?? fixture.homeOvers ?? "0.0"})`}
+                {`${realtime?.homeScore ?? fixture.homeScore}/${
+                  realtime?.homeWickets ?? fixture.homeWickets ?? 0
+                } (${realtime?.homeOvers ?? fixture.homeOvers ?? "0.0"})`}
               </strong>
               <span className="fixture-score-meta">
                 &nbsp;• {realtime?.awayScore ?? fixture.awayScore}/
@@ -209,6 +246,8 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
           ...f,
           statusValue: getStatusValue(f.status),
           phaseValue: getPhaseValue(f.phase),
+          battingTeamId:
+            (f as unknown as { battingTeamId?: string }).battingTeamId ?? "",
           originalStatusValue: getStatusValue(f.status),
         })),
       );
@@ -257,17 +296,18 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
 
   const isEditableStatus = (status: number) =>
     editableStatuses.includes(status);
+
   const handleChange = (
     index: number,
-    field: "statusValue" | "phaseValue",
-    value: number,
+    field: "statusValue" | "phaseValue" | "battingTeamId",
+    value: number | string,
   ) => {
     setFixtures((prev) => {
       const copy = [...prev];
       copy[index] = {
         ...copy[index],
         [field]: value,
-      };
+      } as EditableFixture;
       return copy;
     });
   };
@@ -289,6 +329,7 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
         fixture.statusValue,
         fixture.phaseValue,
         fixture.scheduledAtUtc,
+        fixture.battingTeamId ?? "",
       );
 
       console.log("Updated fixture:=====================>", updated);
@@ -304,6 +345,9 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
                 phase: updated.phase,
                 statusValue: getStatusValue(updated.status),
                 phaseValue: getPhaseValue(updated.phase),
+                battingTeamId:
+                  (updated as unknown as { battingTeamId?: string })
+                    .battingTeamId ?? f.battingTeamId,
               }
             : f,
         ),
@@ -317,8 +361,14 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
       const error = err as {
         response?: { data?: { detail?: string } };
       };
-      console.log("Error updating fixture:=====================>", error.response || error);
-      showError("Error", error.response?.data?.detail || "Unable to update fixture.");
+      console.log(
+        "Error updating fixture:=====================>",
+        error.response || error,
+      );
+      showError(
+        "Error",
+        error.response?.data?.detail || "Unable to update fixture.",
+      );
     }
   };
 
