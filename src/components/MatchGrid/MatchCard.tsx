@@ -11,18 +11,31 @@ type MatchCardProps = {
 };
 
 function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
-  const fixtureId = match.source === "internal" ? match.fixtureId : undefined;
+  const fixtureId = (match.source === "internal" ? match.fixtureId : undefined) ?? match.id;
+  console.log("MatchCard: Fixture ID for match in MatchCard====================>", fixtureId);
   const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
 
   const realtime = fixtureId ? scoreByMatch[fixtureId] : undefined;
-
-  console.log("MatchCard: Realtime score for fixtureId:", fixtureId, realtime);
+  console.log("MatchCard: Realtime score for fixtureId in MatchCard==============>", fixtureId, ":", realtime);
+  console.log("MatchCard: Score updates in MatchCard:====================>", scoreByMatch);
 
   const route =
     match.source === "cricbuzz" ? `/match/${match.id}` : `/fixture/${match.id}`;
   const navigate = useNavigate();
   const location = useLocation();
   const dashboard = location.pathname === "/nvian" ? "nvian" : "live";
+
+  const displayHomeScore = realtime
+    ? `${realtime.homeScore}/${realtime.homeWickets ?? 0}`
+    : match.team1Score !== null
+      ? `${match.team1Score}/${match.team1Wickets ?? 0}`
+      : "-";
+
+  const displayAwayScore = realtime
+    ? `${realtime.awayScore}/${realtime.awayWickets ?? 0}`
+    : match.team2Score !== null
+      ? `${match.team2Score}/${match.team2Wickets ?? 0}`
+      : "-";
 
   const homeOvers = realtime?.homeOvers ?? match.homeOvers ?? null;
   const awayOvers = realtime?.awayOvers ?? match.awayOvers ?? null;
@@ -37,9 +50,16 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
   return (
     <article
       className={`match-card ${isSelected ? "match-card--selected" : ""}`}
-      onClick={() => {
-        onClick();
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
       }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
     >
       <div className="match-card__header">
         <span className="match-card__sport">{match.sport}</span>
@@ -60,8 +80,12 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
             {isLive ? "LIVE" : match.status}
         </span>
         <button
+          type="button"
           className="match-card__view-button"
-          onClick={() => navigate(route, { state: { dashboard } })}
+          onClick={(event) => {
+            event.stopPropagation();
+            navigate(route, { state: { dashboard } });
+          }}
         >
           View
         </button>
@@ -74,13 +98,7 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
             <span>{match.team1Name}</span>
           </div>
 
-          <span className="match-card__score">
-            {realtime
-              ? `${realtime.homeScore}/${realtime.homeWickets ?? 0}`
-              : match.team1Score !== null
-                ? `${match.team1Score}/${match.team1Wickets ?? 0}`
-                : "-"}
-          </span>
+          <span className="match-card__score">{displayHomeScore}</span>
         </div>
 
         <div className="match-card__team">
@@ -89,13 +107,7 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
             <span>{match.team2Name}</span>
           </div>
 
-          <span className="match-card__score">
-            {realtime
-              ? `${realtime.awayScore}/${realtime.awayWickets ?? 0}`
-              : match.team2Score !== null
-                ? `${match.team2Score}/${match.team2Wickets ?? 0}`
-                : "-"}
-          </span>
+          <span className="match-card__score">{displayAwayScore}</span>
         </div>
       </div>
 

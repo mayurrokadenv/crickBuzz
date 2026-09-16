@@ -13,6 +13,8 @@ interface NVianDashboardSearchContextType {
   loadMatches: () => Promise<void>;
 }
 
+export const NVIAN_DASHBOARD_REFRESH_EVENT = "nvian-dashboard-refresh";
+
 const NVianDashboardSearchContext =
   createContext<NVianDashboardSearchContextType | null>(null);
 
@@ -46,6 +48,18 @@ export const NVianDashboardSearchProvider = ({
     const timer = setTimeout(loadMatches, 500);
     return () => clearTimeout(timer);
   }, [searchTerm, loadMatches]);
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      void loadMatches();
+    };
+
+    window.addEventListener(NVIAN_DASHBOARD_REFRESH_EVENT, handleRefresh);
+
+    return () => {
+      window.removeEventListener(NVIAN_DASHBOARD_REFRESH_EVENT, handleRefresh);
+    };
+  }, [loadMatches]);
 
   return (
     <NVianDashboardSearchContext.Provider

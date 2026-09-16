@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
 import { createCommentaryHubConnection } from "../lib/signalrClient";
 
@@ -63,184 +63,141 @@ interface BackendScoreUpdate {
 
 const SCORE_EVENT = "ScoreUpdated";
 
+type ScoreFeedListener = () => void;
+
+let sharedConnection: HubConnection | null = null;
+let sharedConnectionPromise: Promise<void> | null = null;
+let sharedConnectionState = HubConnectionState.Disconnected;
+let sharedScoreByMatch: Record<string, ScoreUpdate> = {};
+const scoreFeedListeners = new Set<ScoreFeedListener>();
+const fixtureSubscribers = new Map<string, number>();
+
+function notifyScoreFeedListeners() {
+  scoreFeedListeners.forEach((listener) => listener());
+}
+
+function getUpdateValue<T>(update: BackendScoreUpdate, camelCase: keyof BackendScoreUpdate, pascalCase: string): T | undefined {
+  const payload = update as unknown as Record<string, unknown>;
+  return (payload[camelCase] ?? payload[pascalCase]) as T | undefined;
+}
+
+function ensureSharedConnection() {
+  if (sharedConnectionPromise) return sharedConnectionPromise;
+
+  const connection = createCommentaryHubConnection();
+  sharedConnection = connection;
+
+  connection.on(SCORE_EVENT, (update: BackendScoreUpdate) => {
+    const fixtureId = getUpdateValue<string>(update, "fixtureId", "FixtureId");
+    if (!fixtureId) return;
+
+    console.debug("ScoreUpdated received for fixture:", fixtureId, update);
+
+    const scoreUpdate: ScoreUpdate = {
+      fixtureId,
+      homeScore: getUpdateValue<number>(update, "homeRuns", "HomeRuns") ?? 0,
+      homeWickets: getUpdateValue<number>(update, "homeWickets", "HomeWickets"),
+      awayScore: getUpdateValue<number>(update, "awayRuns", "AwayRuns") ?? 0,
+      awayWickets: getUpdateValue<number>(update, "awayWickets", "AwayWickets"),
+      homeOvers: getUpdateValue<string>(update, "homeOvers", "HomeOvers"),
+      awayOvers: getUpdateValue<string>(update, "awayOvers", "AwayOvers"),
+      updatedAtUtc: getUpdateValue<string>(update, "updatedAtUtc", "UpdatedAtUtc"),
+      scorecards: getUpdateValue<Scorecard[]>(update, "scorecards", "Scorecards"),
+    };
+
+    sharedScoreByMatch = {
+      ...sharedScoreByMatch,
+      [fixtureId]: scoreUpdate,
+      [fixtureId.toLowerCase()]: scoreUpdate,
+    };
+    notifyScoreFeedListeners();
+  });
+
+  sharedConnectionPromise = connection
+    .start()
+    .then(() => {
+      sharedConnectionState = HubConnectionState.Connected;
+      notifyScoreFeedListeners();
+    })
+    .catch((error) => {
+      sharedConnectionState = HubConnectionState.Disconnected;
+      sharedConnectionPromise = null;
+      console.error("Failed to connect to score hub", error);
+      throw error;
+    });
+
+  connection.onreconnecting(() => {
+    sharedConnectionState = HubConnectionState.Reconnecting;
+    notifyScoreFeedListeners();
+  });
+
+  connection.onreconnected(() => {
+    sharedConnectionState = HubConnectionState.Connected;
+    notifyScoreFeedListeners();
+    fixtureSubscribers.forEach((_count, fixtureId) => {
+      void connection.invoke("JoinFixtureGroup", fixtureId);
+    });
+  });
+
+  connection.onclose(() => {
+    sharedConnectionState = HubConnectionState.Disconnected;
+    sharedConnectionPromise = null;
+    notifyScoreFeedListeners();
+  });
+
+  return sharedConnectionPromise;
+}
+
+function subscribeToScoreFeed(listener: ScoreFeedListener) {
+  scoreFeedListeners.add(listener);
+  return () => {
+    scoreFeedListeners.delete(listener);
+  };
+}
+
+async function joinFixtureGroup(fixtureId: string) {
+  const connection = sharedConnection ?? undefined;
+  if (!connection || !fixtureId) return;
+
+  await ensureSharedConnection();
+  if (connection.state === HubConnectionState.Connected) {
+    await connection.invoke("JoinFixtureGroup", fixtureId);
+    console.debug("Joined score fixture group:", fixtureId);
+  }
+}
+
 export function useScoreUpdateFeed(fixtureId: string) {
-  const [scoreByMatch, setScoreByMatch] = useState<Record<string, ScoreUpdate>>(
-    {},
-  );
-
-  const [connectionState, setConnectionState] = useState<HubConnectionState>(
-    HubConnectionState.Disconnected,
-  );
-
-  const connectionRef = useRef<HubConnection | null>(null);
-  const joinedFixtureRef = useRef<string | null>(null);
-
-  // ==================================================
-  // 1. CREATE SIGNALR CONNECTION
-  // ==================================================
+  const [feedVersion, setFeedVersion] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const connection = createCommentaryHubConnection();
-
-    connectionRef.current = connection;
-
-    // ==================================================
-    // RECEIVE SCORE UPDATE
-    // ==================================================
-
-    connection.on(SCORE_EVENT, (update: BackendScoreUpdate) => {
-      if (cancelled) return;
-
-      console.log("ScoreUpdated received from SignalR:", update);
-
-      // Backend DTO -> Frontend UI model
-      const scoreUpdate: ScoreUpdate = {
-        fixtureId: update.fixtureId,
-        homeScore: update.homeRuns,
-        homeWickets: update.homeWickets,
-        awayScore: update.awayRuns,
-        awayWickets: update.awayWickets,
-        homeOvers: update.homeOvers,
-        awayOvers: update.awayOvers,
-        updatedAtUtc: update.updatedAtUtc,
-        scorecards: update.scorecards, // <-- Added this to pass the payload forward
-      };
-
-      setScoreByMatch((previous) => ({
-        ...previous,
-        [scoreUpdate.fixtureId]: scoreUpdate,
-      }));
-
-      console.log("ScoreUpdated applied to scoreByMatch state:", scoreUpdate, "New state:", {
-        ...scoreByMatch,
-        [scoreUpdate.fixtureId]: scoreUpdate,
-      });
-    });
-
-    // ==================================================
-    // RECONNECTING
-    // ==================================================
-
-    connection.onreconnecting(() => {
-      if (cancelled) return;
-
-      console.log("Score SignalR reconnecting...");
-
-      setConnectionState(HubConnectionState.Reconnecting);
-    });
-
-    // ==================================================
-    // RECONNECTED
-    // ==================================================
-
-    connection.onreconnected(() => {
-      if (cancelled) return;
-
-      console.log("Score SignalR reconnected");
-
-      setConnectionState(HubConnectionState.Connected);
-    });
-
-    // ==================================================
-    // CONNECTION CLOSED
-    // ==================================================
-
-    connection.onclose(() => {
-      if (cancelled) return;
-
-      console.log("Score SignalR disconnected");
-
-      setConnectionState(HubConnectionState.Disconnected);
-    });
-
-    // ==================================================
-    // START CONNECTION
-    // ==================================================
-
-    connection
-      .start()
-      .then(() => {
-        if (cancelled) return;
-
-        console.log("Score SignalR connected");
-
-        setConnectionState(HubConnectionState.Connected);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-
-        console.error("Failed to connect to score hub", error);
-
-        setConnectionState(HubConnectionState.Disconnected);
-      });
-
-    // ==================================================
-    // CLEANUP
-    // ==================================================
-
-    return () => {
-      cancelled = true;
-
-      connectionRef.current = null;
-      joinedFixtureRef.current = null;
-
-      connection.off(SCORE_EVENT);
-
-      if (connection.state !== HubConnectionState.Disconnected) {
-        connection.stop();
-      }
-    };
+    return subscribeToScoreFeed(() => setFeedVersion((version) => version + 1));
   }, []);
 
-  // ==================================================
-  // 2. JOIN FIXTURE GROUP
-  // ==================================================
-
   useEffect(() => {
-    const connection = connectionRef.current;
+    if (!fixtureId) return;
 
-    if (
-      !connection ||
-      !fixtureId ||
-      connectionState !== HubConnectionState.Connected
-    ) {
-      return;
-    }
+    fixtureSubscribers.set(fixtureId, (fixtureSubscribers.get(fixtureId) ?? 0) + 1);
+    void ensureSharedConnection()
+      .then(() => joinFixtureGroup(fixtureId))
+      .catch(() => undefined);
 
-    const previousFixtureId = joinedFixtureRef.current;
-
-    const switchGroup = async () => {
-      try {
-        // Leave previous fixture group
-        if (previousFixtureId && previousFixtureId !== fixtureId) {
-          await connection.invoke("LeaveFixtureGroup", previousFixtureId);
-
-          console.log("Left score fixture group:", previousFixtureId);
+    return () => {
+      const count = fixtureSubscribers.get(fixtureId) ?? 0;
+      if (count <= 1) {
+        fixtureSubscribers.delete(fixtureId);
+        if (sharedConnection?.state === HubConnectionState.Connected) {
+          void sharedConnection.invoke("LeaveFixtureGroup", fixtureId).catch(() => undefined);
         }
-
-        // Join current fixture group
-        await connection.invoke("JoinFixtureGroup", fixtureId);
-
-        joinedFixtureRef.current = fixtureId;
-
-        console.log("Joined score fixture group:", fixtureId);
-      } catch (error) {
-        console.error("Failed to switch fixture group for score feed", error);
+      } else {
+        fixtureSubscribers.set(fixtureId, count - 1);
       }
     };
-
-    switchGroup();
-  }, [fixtureId, connectionState]);
-
-  // ==================================================
-  // RETURN
-  // ==================================================
+  }, [fixtureId]);
 
   return {
-    scoreByMatch,
-    connectionState,
+    scoreByMatch: sharedScoreByMatch,
+    connectionState: sharedConnectionState,
+    feedVersion,
   };
 }
 
