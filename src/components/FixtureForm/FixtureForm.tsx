@@ -5,9 +5,23 @@ import "./FixtureForm.css";
 import { getTeams, type Team } from "../../services/TeamService";
 import { sportService, type Sport } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
+import { getSeries as fetchSeries } from "../../services/SeriesService";
+
+// Define Series interface based on your API response
+interface Series {
+    id: string;
+    name: string;
+    sportId: string;
+    sportName: string;
+    teams: {
+        teamId: string;
+        teamName: string;
+    }[];
+}
 
 interface Fixture {
     sport: string;
+    seriesId: string; // Added seriesId
     home: string;
     away: string;
     scheduledAtUtc: string;
@@ -20,6 +34,7 @@ interface FixtureFormProps {
 
 function FixtureForm({ onSaved }: FixtureFormProps) {
     const [sports, setSports] = useState<Sport[]>([]);
+    const [series, setSeries] = useState<Series[]>([]); // Added series state
     const [loading, setLoading] = useState(true);
     const [sportswiseteams, setTeams] = useState<Team[]>([]);
 
@@ -28,6 +43,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
 
     const [fixture, setFixture] = useState<Fixture>({
         sport: "",
+        seriesId: "", // Initialize seriesId
         home: "",
         away: "",
         scheduledAtUtc: "",
@@ -53,15 +69,46 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
         };
         loadSports();
         loadTeams();
+        getSeries();
     }, []);
+
+    const getSeries = async (): Promise<Awaited<ReturnType<typeof fetchSeries>>> => {
+        try {
+            const data = await fetchSeries();
+            setSeries(data); // Store series in state
+            console.log("Fetched series:", data);
+            return data;
+        } catch (error) {
+            console.error("Error fetching series:", error);
+            return [];
+        }
+    };
 
     const selectedSport = sports.find(
         (item) => item.name === fixture.sport
     );
 
-    const filteredTeams = sportswiseteams.filter(
-        (team) => team.sportId === selectedSport?.id
-    );
+    // Filter series based on selected sport
+    const filteredSeries = series.filter(s => s.sportId === selectedSport?.id);
+
+    // Determine which teams to show based on whether a series is selected
+    let filteredTeams: { id: string; teamName: string }[] = [];
+
+    if (fixture.seriesId) {
+        const selectedSeries = series.find(s => s.id === fixture.seriesId);
+        if (selectedSeries) {
+            // Map series teams to the format expected by the dropdown
+            filteredTeams = selectedSeries.teams.map(t => ({ 
+                id: t.teamId, 
+                teamName: t.teamName 
+            }));
+        }
+    } else {
+        // Default behavior: show all teams for the selected sport
+        filteredTeams = sportswiseteams.filter(
+            (team) => team.sportId === selectedSport?.id
+        );
+    }
 
     // Check if the selected sport is cricket (or any sport that needs overs)
     const isCricket = fixture.sport?.toLowerCase() === "cricket";
@@ -74,11 +121,22 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
         if (name === "sport") {
             setFixture({
                 sport: value,
+                seriesId: "", // Reset series when sport changes
                 home: "",
                 away: "",
                 scheduledAtUtc: "",
                 totalOvers: "", // Reset overs when sport changes
             });
+            return;
+        }
+
+        if (name === "seriesId") {
+            setFixture((prev) => ({
+                ...prev,
+                seriesId: value,
+                home: "", // Reset teams when series changes
+                away: "",
+            }));
             return;
         }
 
@@ -114,34 +172,21 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
             }
         }
 
-        const payload: any = {
-            homeTeamId: fixture.home,
-            awayTeamId: fixture.away,
-            scheduledAtUtc: new Date(fixture.scheduledAtUtc).toISOString(),
-            totalOvers: isCricket ? fixture.totalOvers : undefined, // Include totalOvers only for cricket
-        };
-
-
-        console.log("Payload before sending:", payload);
-
-        // Only include totalOvers if it's cricket
-        if (isCricket) {
-            if (!fixture.totalOvers) {
-            showError("Error", "Please enter total overs");
-            return;
-            }
-            if (isNaN(Number(fixture.totalOvers)) || Number(fixture.totalOvers) <= 0) {
-            showError("Error", "Please enter a valid number of overs (greater than 0)");
-            return;
-            }
-        }
-
-        // --- NEW VALIDATION ---
         const scheduledDate = new Date(fixture.scheduledAtUtc);
         if (scheduledDate < now) {
             showError("Error", "Scheduled date and time cannot be in the past.");
             return;
         }
+
+        const payload: any = {
+            homeTeamId: fixture.home,
+            awayTeamId: fixture.away,
+            scheduledAtUtc: new Date(fixture.scheduledAtUtc).toISOString(),
+            totalOvers: isCricket ? fixture.totalOvers : undefined,
+            seriesId: fixture.seriesId || null, // Include seriesId, send null if "None" is selected
+        };
+
+        console.log("Payload before sending:", payload);
 
         try {
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "/api"}/fixtures`, {
@@ -170,6 +215,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
             onSaved();
             setFixture({
                 sport: sports.length > 0 ? sports[0].name : "",
+                seriesId: "",
                 home: "",
                 away: "",
                 scheduledAtUtc: "",
@@ -200,6 +246,24 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                         {sports.map((sport) => (
                             <option key={sport.id} value={sport.name}>
                                 {sport.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* New Series Dropdown */}
+                <div className="form-group">
+                    <label htmlFor="seriesId">Series</label>
+                    <select
+                        id="seriesId"
+                        name="seriesId"
+                        value={fixture.seriesId}
+                        onChange={handleChange}
+                    >
+                        <option value="">None</option>
+                        {filteredSeries.map((s) => (
+                            <option key={s.id} value={s.id}>
+                                {s.name}
                             </option>
                         ))}
                     </select>

@@ -6,7 +6,7 @@ import {
   postCommentary,
   updateScoreFixtures,
 } from "../../services/liveservice";
-import { fixtureService } from "../../services/fixturesservice"; // ⭐ NEW
+import { fixtureService } from "../../services/fixturesservice";
 import "./AddCommentary.css";
 import { showError, showSuccess } from "../../services/common/AlertService";
 
@@ -41,7 +41,7 @@ interface LiveFixture {
   sport: string;
   status: string;
   phase?: string;
-  scheduledAtUtc?: string; // ⭐ NEW — needed for the fixture PATCH
+  scheduledAtUtc?: string;
   homeScore: number;
   homeWickets: number | null;
   awayScore: number;
@@ -62,30 +62,14 @@ interface AddCommentaryProps {
 
 // Cricket Action Map
 const CRICKET_ACTION_MAP: Record<string, number> = {
-  six: 0,
-  four: 1,
-  single: 2,
-  wicket: 3,
-  wide: 4,
-  two: 5,
-  three: 6,
-  no_ball: 17,
-  byes: 18,
-  dot_ball: 19,
+  six: 0, four: 1, single: 2, wicket: 3, wide: 4, two: 5, three: 6,
+  no_ball: 17, byes: 18, dot_ball: 19,
 };
 
 // Football Action Map
 const FOOTBALL_ACTION_MAP: Record<string, number> = {
-  goal: 7,
-  assist: 8,
-  yellow_card: 9,
-  red_card: 10,
-  substitution: 11,
-  penalty: 12,
-  free_kick: 13,
-  corner: 14,
-  offside: 15,
-  save: 16,
+  goal: 7, assist: 8, yellow_card: 9, red_card: 10, substitution: 11,
+  penalty: 12, free_kick: 13, corner: 14, offside: 15, save: 16,
 };
 
 const cricketQuickActions = [
@@ -114,23 +98,6 @@ const footballQuickActions = [
   { label: "🧤 Save", type: "save", icon: "🧤", color: "#10B981", bgColor: "#D1FAE5", borderColor: "#10B981", selectedBg: "#10B981", selectedColor: "#FFFFFF" },
 ];
 
-// ============================================================
-// ⭐ NEW: Fixture-driven winner detection
-//
-// Reads directly off the fixture's own authoritative fields
-// (homeScore/awayScore/homeWickets/awayWickets/homeOvers/awayOvers)
-// and the scorecards' inningsNo/battingTeamId — NOT off local
-// `scores` state and NOT off `selectedMatch.phase`. This means it
-// can never drift out of sync with what the backend last reported,
-// and it doesn't depend on the auto-innings-switch PATCH having
-// already landed.
-//
-// ⭐ UPDATED: "all out" is no longer a fixed 10 wickets. It now uses
-// the batting team's own roster size — the same `players` array the
-// BATTER dropdown is populated from (fetched live via fetchLiveTeams).
-// MAX_WICKETS below is kept only as a fallback for the rare case a
-// team's roster can't be resolved.
-// ============================================================
 const MAX_WICKETS = 10; // fallback only
 
 interface WinnerResult {
@@ -165,12 +132,6 @@ function determineWinner(
   const secondWkts = (firstIsHome ? fixture.awayWickets : fixture.homeWickets) ?? 0;
   const secondOvers = firstIsHome ? fixture.awayOvers : fixture.homeOvers;
 
-  // ⭐ KEY CHANGE: instead of trusting `phase`, infer "we're in the chase"
-  // from the non-batting team's OWN stats. During the first innings, the
-  // team that hasn't batted yet always sits at 0 runs / 0 wkts / "0.0" overs
-  // for its own batting line. Once that team's line is non-zero, it means
-  // they've already completed an innings — so the currently batting team
-  // (fixture.battingTeamId) must be chasing, regardless of what `phase` says.
   const firstTeamHasBatted =
     firstRuns > 0 || firstWkts > 0 || oversToBalls(firstOvers) > 0;
   if (!firstTeamHasBatted) return null; // still first innings
@@ -213,7 +174,10 @@ function AddCommentary({
   onScoreUpdated,
 }: AddCommentaryProps) {
   const [selectedTeamName, setSelectedTeamName] = useState<string>("");
-  const [selectedBatterId, setSelectedBatterId] = useState<string>("");
+  // ⭐ Persist selectedBatterId from localStorage
+  const [selectedBatterId, setSelectedBatterId] = useState<string>(() => {
+    return localStorage.getItem("selectedBatterId") || "";
+  });
   const [selectedBowlerId, setSelectedBowlerId] = useState<string>("");
   const [note, setNote] = useState("");
   const [selectedActionType, setSelectedActionType] = useState<string | null>(null);
@@ -235,7 +199,6 @@ function AddCommentary({
   const [winningTeamId, setWinningTeamId] = useState<string | null>(null);
   const [battingTeamId, setBattingTeamId] = useState<string | null>(null);
 
-  // ⭐ NEW: one-shot guards for the two auto-transitions
   const autoInningsSwitchRef = useRef<string | null>(null);
   const autoCompleteMatchRef = useRef<string | null>(null);
 
@@ -259,9 +222,6 @@ function AddCommentary({
 
   const effectivelyLive = isMatchLive && !winnerInfo?.isMatchOver;
 
-  // ⭐ NEW: max wickets for a team = number of players returned by the API for
-  // that team (the same `players` array that populates the BATTER dropdown).
-  // Falls back to MAX_WICKETS (10) if the team/roster can't be resolved yet.
   const getMaxWicketsForTeam = (teamName: string): number => {
     const team = matchTeams.find(
       (t) => t.teamName.toLowerCase() === teamName.toLowerCase()
@@ -299,31 +259,79 @@ function AddCommentary({
     return formatOvers(o, b);
   };
 
-  const subtractBall = (currentOvers: string): string => {
-    let { overs: o, balls: b } = parseOvers(currentOvers);
-    if (o === 0 && b === 0) return currentOvers;
-    b -= 1;
-    if (b < 0) {
-      if (o > 0) {
-        o -= 1;
-        b = 5;
-      } else {
-        b = 0;
-      }
-    }
-    return formatOvers(o, b);
-  };
-
-  // ============================================================
-  // source of truth for scorecards
-  // ============================================================
   const currentFixture = liveFixturesList.find((f) => f.id === selectedFixtureId);
   const effectiveScorecards: any[] =
     currentFixture?.scorecards && currentFixture.scorecards.length > 0
       ? currentFixture.scorecards
       : selectedMatch?.scorecards || [];
 
-  // OUT-PLAYER HELPERS
+  // ============================================================
+  // ⭐ NEW: BOWLER RESTRICTION HELPERS
+  // ============================================================
+  const getLastOverBowlerId = (): string | null => {
+    if (isFootball || !effectiveScorecards || effectiveScorecards.length === 0) return null;
+    
+    if (!selectedTeamName) return null;
+    const currentOvers = overs[selectedTeamName] || "0.0";
+    const { overs: o, balls: b } = parseOvers(currentOvers);
+    if (o === 0 && b === 0) return null;
+
+    const sorted = [...effectiveScorecards].sort((a: any, b: any) => (b?.inningsNo ?? 0) - (a?.inningsNo ?? 0));
+    const currentInnings = sorted[0];
+    const bowlingFigures = currentInnings?.bowlingFigures || [];
+    if (bowlingFigures.length === 0) return null;
+
+    let maxBalls = -1;
+    let lastBowlerId: string | null = null;
+    bowlingFigures.forEach((fig: any) => {
+      const { overs: fo, balls: fb } = parseOvers(fig.overs || "0.0");
+      const totalBalls = fo * 6 + fb;
+      if (totalBalls >= maxBalls) {
+        maxBalls = totalBalls;
+        lastBowlerId = fig.playerId || null;
+      }
+    });
+    return lastBowlerId;
+  };
+
+  const isStartOfNewOver = (): boolean => {
+    if (isFootball || !selectedTeamName) return false;
+    const currentOvers = overs[selectedTeamName] || "0.0";
+    const { balls } = parseOvers(currentOvers);
+    return balls === 0;
+  };
+
+  const isBowlerRestricted = (bowlerId: string): boolean => {
+    if (isFootball || !bowlerId) return false;
+    const lastBowlerId = getLastOverBowlerId();
+    if (!lastBowlerId) return false;
+    return isStartOfNewOver() && bowlerId === lastBowlerId;
+  };
+  // ============================================================
+
+  // ============================================================
+  // ⭐ NEW: HELPERS FOR CURRENT BATSMEN HIGHLIGHT
+  // ============================================================
+  const getCurrentBatsmenIds = (teamId: string): Set<string> => {
+    const currentIds = new Set<string>();
+    if (!teamId || !effectiveScorecards.length) return currentIds;
+
+    const teamInnings = effectiveScorecards
+      .filter((s: any) => s?.battingTeamId === teamId)
+      .sort((a: any, b: any) => (b?.inningsNo ?? 0) - (a?.inningsNo ?? 0));
+
+    if (!teamInnings.length) return currentIds;
+
+    const latestInnings = teamInnings[0];
+    (latestInnings?.battingFigures || []).forEach((fig: any) => {
+      if (fig?.out !== true && fig?.playerId) {
+        currentIds.add(fig.playerId);
+      }
+    });
+    return currentIds;
+  };
+  // ============================================================
+
   const getOutPlayerIdsForTeam = (teamId: string): Set<string> => {
     const outIds = new Set<string>();
     if (!teamId || !effectiveScorecards.length) return outIds;
@@ -335,13 +343,13 @@ function AddCommentary({
     if (!teamInnings.length) return outIds;
 
     const latestInnings = teamInnings[0];
-  (latestInnings?.battingFigures || []).forEach((fig: any) => {
-    if (fig?.out === true && fig?.playerId) {
-      outIds.add(fig.playerId);
-    }
-  });
-  return outIds;
-};
+    (latestInnings?.battingFigures || []).forEach((fig: any) => {
+      if (fig?.out === true && fig?.playerId) {
+        outIds.add(fig.playerId);
+      }
+    });
+    return outIds;
+  };
 
   const getEligibleBatters = (teamName: string): Player[] => {
     const team = matchTeams.find(
@@ -472,6 +480,7 @@ function AddCommentary({
 
       if (matchChanged) {
         setSelectedBatterId("");
+        localStorage.removeItem("selectedBatterId");
         setSelectedBowlerId("");
         setBowlerOvers({});
       }
@@ -503,6 +512,7 @@ function AddCommentary({
       setSelectedExtraRuns(0);
       setNote("");
       setSelectedBatterId("");
+      localStorage.removeItem("selectedBatterId");
       setSelectedBowlerId("");
       setBowlerOvers({});
     }
@@ -519,22 +529,11 @@ function AddCommentary({
     }
   }, [battingTeamId, matchTeams]);
 
-  // ⭐ NEW: reset one-shot guards whenever we switch to a different fixture
   useEffect(() => {
     autoInningsSwitchRef.current = null;
     autoCompleteMatchRef.current = null;
   }, [selectedFixtureId]);
 
-  // ============================================================
-  // ⭐ UPDATED: WINNER DETECTION LOGIC (cricket only)
-  //
-  // Now derived entirely from currentFixture (authoritative
-  // homeScore/awayScore/homeWickets/awayWickets/homeOvers/awayOvers
-  // + scorecards' inningsNo/battingTeamId) rather than local
-  // `scores` state or `selectedMatch.phase`. See determineWinner()
-  // above the component for the actual rules. "All out" now uses
-  // each team's own roster size instead of a fixed 10.
-  // ============================================================
   useEffect(() => {
     if (isFootball) {
       setWinnerInfo(null);
@@ -554,7 +553,7 @@ function AddCommentary({
   }, [isFootball, currentFixture, matchTeams]);
 
   // ============================================================
-  // BATTER / BOWLER SELECTION
+  // ⭐ UPDATED: BATTER / BOWLER SELECTION WITH PERSISTENCE
   // ============================================================
   useEffect(() => {
     if (!selectedTeamName || matchTeams.length !== 2) {
@@ -568,21 +567,31 @@ function AddCommentary({
     );
 
     const eligibleBatters = getEligibleBatters(selectedTeamName);
-
     const currentBatterIsValid =
       selectedBatterId && eligibleBatters.some((player) => player.playerId === selectedBatterId);
 
     if (eligibleBatters.length > 0) {
-      setSelectedBatterId(currentBatterIsValid ? selectedBatterId : eligibleBatters[0].playerId);
+      const newBatterId = currentBatterIsValid ? selectedBatterId : eligibleBatters[0].playerId;
+      setSelectedBatterId(newBatterId);
+      localStorage.setItem("selectedBatterId", newBatterId);
     } else {
       setSelectedBatterId("");
+      localStorage.removeItem("selectedBatterId");
     }
 
-    const currentBowlerIsValid =
-      selectedBowlerId && bowlingTeam?.players?.some((player) => player.playerId === selectedBowlerId);
+    // Bowler selection logic with restriction
+    const getAvailableBowlers = () => {
+      if (!bowlingTeam?.players) return [];
+      const lastBowlerId = getLastOverBowlerId();
+      const startOfNewOver = isStartOfNewOver();
+      return bowlingTeam.players.filter(p => !(startOfNewOver && p.playerId === lastBowlerId));
+    };
 
-    if (bowlingTeam && bowlingTeam.players && bowlingTeam.players.length > 0) {
-      const newBowlerId = currentBowlerIsValid ? selectedBowlerId : bowlingTeam.players[0].playerId;
+    const availableBowlers = getAvailableBowlers();
+    const currentBowlerIsValid = selectedBowlerId && availableBowlers.some((player) => player.playerId === selectedBowlerId);
+
+    if (availableBowlers.length > 0) {
+      const newBowlerId = currentBowlerIsValid ? selectedBowlerId : availableBowlers[0].playerId;
       setSelectedBowlerId(newBowlerId);
       if (newBowlerId && !bowlerOvers[newBowlerId]) {
         setBowlerOvers((prev) => ({ ...prev, [newBowlerId]: "0.0" }));
@@ -598,12 +607,9 @@ function AddCommentary({
     selectedBowlerId,
     effectiveScorecards,
     liveFixturesList,
+    overs,
   ]);
 
-  // ============================================================
-  // Sync bowlerOvers from the fixture scorecards so
-  // "bowlerOver" persists across page refreshes.
-  // ============================================================
   useEffect(() => {
     if (!effectiveScorecards || effectiveScorecards.length === 0) return;
 
@@ -641,17 +647,6 @@ function AddCommentary({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveScorecards]);
 
-  // ============================================================
-  // ⭐ AUTO INNINGS SWITCH (First innings → Second innings)
-  //
-  // Fires when the current batting team's innings is complete:
-  //   • all wickets fallen (based on that team's own roster size), OR
-  //   • total overs bowled, OR
-  //   • no eligible (not-out) batters remain (data-driven fallback)
-  //
-  // PATCH: status = 1 (Live), phase = 1 (SecondInnings),
-  //        battingTeamId = <other team>
-  // ============================================================
   useEffect(() => {
     if (
       isFootball ||
@@ -664,7 +659,6 @@ function AddCommentary({
       return;
     }
 
-    // Only fire in the first innings.
     const phaseStr = (selectedMatch?.phase || "").toLowerCase().replace(/\s+/g, "");
     const isFirstInnings =
       phaseStr === "firstinnings" || phaseStr === "1stinnings" || phaseStr === "innings1";
@@ -674,7 +668,6 @@ function AddCommentary({
     const battingTeamNameLocal = battingTeamLocal?.teamName || "";
     if (!battingTeamLocal || !battingTeamNameLocal) return;
 
-    // Wait until we have score data for this team (fixture fully loaded).
     const teamScore = scores[battingTeamNameLocal];
     if (!teamScore) return;
 
@@ -692,13 +685,10 @@ function AddCommentary({
 
     const inningsComplete = allOut || oversDone || noEligibleBatters;
     if (!inningsComplete) {
-      // reset guard whenever we're back to a healthy state (e.g. before the
-      // very first innings begins there can be a transient moment)
       autoInningsSwitchRef.current = null;
       return;
     }
 
-    // One-shot per fixture
     if (autoInningsSwitchRef.current === selectedFixtureId) return;
     autoInningsSwitchRef.current = selectedFixtureId;
 
@@ -720,7 +710,6 @@ function AddCommentary({
           `${battingTeamNameLocal} innings over. ${otherTeam.teamName} now batting.`,
         );
 
-        // Refresh fixtures so battingTeamId, phase and scorecards update
         await getFixtures();
         window.dispatchEvent(new CustomEvent("crickbuzz-live-feeds-refresh"));
       } catch (err) {
@@ -744,23 +733,13 @@ function AddCommentary({
     currentFixture?.scheduledAtUtc,
   ]);
 
-  // ============================================================
-  // ⭐ AUTO MATCH COMPLETION (Second innings → Completed)
-  //
-  // Fires when winnerInfo says the match is mathematically over.
-  // PATCH: status = 2 (Completed), phase = 1 (SecondInnings),
-  //        battingTeamId = <winning team, if any — falls back to
-  //        current battingTeamId for a tie>
-  // ============================================================
   useEffect(() => {
     if (isFootball) return;
     if (!selectedFixtureId) return;
     if (!winnerInfo?.isMatchOver) return;
 
-    // Skip if the backend already shows Completed
     if ((matchStatus || "").toLowerCase() === "completed") return;
 
-    // One-shot per fixture
     if (autoCompleteMatchRef.current === selectedFixtureId) return;
     autoCompleteMatchRef.current = selectedFixtureId;
 
@@ -874,6 +853,12 @@ function AddCommentary({
 
     if (!selectedBatterId || !selectedBowlerId || !selectedTeamName) {
       alert("Please select a batter, bowler, and team.");
+      return;
+    }
+
+    // ⭐ NEW: Guard against consecutive overs
+    if (isBowlerRestricted(selectedBowlerId)) {
+      showError("Error", "This bowler cannot bowl consecutive overs. Please select a different bowler.");
       return;
     }
 
@@ -1026,6 +1011,10 @@ function AddCommentary({
   const showExtraRunsPicker = !isFootball && !!selectedActionType && EXTRA_RUNS_ELIGIBLE_ACTIONS.has(selectedActionType);
   const inningsOver = isInningsOverForTeam(selectedTeamName) || winnerInfo?.isMatchOver;
   const battingRestricted = !!battingTeamId;
+
+  // ⭐ NEW: Get IDs of current batsmen for highlighting
+  const selectedTeam = matchTeams.find(t => t.teamName.toLowerCase() === selectedTeamName.toLowerCase());
+  const currentBatsmenIds = selectedTeam ? getCurrentBatsmenIds(selectedTeam.id) : new Set<string>();
 
   return (
     <div className="add-commentary-container">
@@ -1271,18 +1260,24 @@ function AddCommentary({
             <div className="player-selector">
               <select
                 value={selectedBatterId}
-                onChange={(e) => setSelectedBatterId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedBatterId(e.target.value);
+                  localStorage.setItem("selectedBatterId", e.target.value);
+                }}
                 className="player-dropdown"
                 disabled={batterPlayers.length === 0 || !effectivelyLive || inningsOver || !isBattingTeamSelected}
               >
                 {batterPlayers.length === 0 ? (
                   <option value="">No batters available</option>
                 ) : (
-                  batterPlayers.map((player) => (
-                    <option key={player.playerId} value={player.playerId}>
-                      {player.playerName} ({player.role})
-                    </option>
-                  ))
+                  batterPlayers.map((player) => {
+                    const isCurrentlyBatting = currentBatsmenIds.has(player.playerId);
+                    return (
+                      <option key={player.playerId} value={player.playerId}>
+                        {isCurrentlyBatting ? "🏏 " : ""}{player.playerName} ({player.role}){isCurrentlyBatting ? " - On Pitch" : ""}
+                      </option>
+                    );
+                  })
                 )}
               </select>
             </div>
@@ -1301,12 +1296,17 @@ function AddCommentary({
                   🔒 Locked until over completes
                 </span>
               )}
+              {isStartOfNewOver() && !isBowlerLocked() && (
+                <span style={{ marginLeft: "8px", color: "#f59e0b", fontSize: "11px", fontWeight: 600 }}>
+                  ⚠️ New over - previous bowler restricted
+                </span>
+              )}
             </label>
             <div className="player-selector">
               <select
                 value={selectedBowlerId}
                 onChange={(e) => {
-                  if (!isBowlerLocked()) {
+                  if (!isBowlerLocked() && !isBowlerRestricted(e.target.value)) {
                     setSelectedBowlerId(e.target.value);
                   }
                 }}
@@ -1317,11 +1317,14 @@ function AddCommentary({
                 {bowlerPlayers.length === 0 ? (
                   <option value="">No bowlers available</option>
                 ) : (
-                  bowlerPlayers.map((player) => (
-                    <option key={player.playerId} value={player.playerId}>
-                      {player.playerName} ({player.role})
-                    </option>
-                  ))
+                  bowlerPlayers.map((player) => {
+                    const restricted = isBowlerRestricted(player.playerId);
+                    return (
+                      <option key={player.playerId} value={player.playerId} disabled={restricted}>
+                        {player.playerName} ({player.role}) {restricted ? " (Cannot bowl consecutive overs)" : ""}
+                      </option>
+                    );
+                  })
                 )}
               </select>
             </div>

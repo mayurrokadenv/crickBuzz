@@ -13,6 +13,7 @@ interface BattingFigure {
   fours: number;
   sixes: number;
   strikeRate: number;
+  out?: boolean;
 }
 
 interface BowlingFigure {
@@ -27,78 +28,177 @@ interface BowlingFigure {
   economy: number;
 }
 
-interface Innings {
-  id: string;
-  fixtureId: string;
-  inningsNo: number;
-  battingTeamId: string;
-  bowlingTeamId: string;
-  battingFigures: BattingFigure[];
-  bowlingFigures: BowlingFigure[];
-}
-
 type LiveMatchDetailsProps = {
   live: MatchLiveModel;
   fixtureId?: string;
-  scorecards?: Innings[];   // initial scorecards from parent
 };
 
-function LiveMatchDetails({ live, fixtureId, scorecards }: LiveMatchDetailsProps) {
-  const {
-    batTeam,
-    batsmanStriker,
-    batsmanNonStriker,
-    bowlerStriker,
-    overs,
-    currentRunRate,
-    requiredRunRate,
-    partnerShip,
-    lastWicket,
-    recentOvsStats,
-    status,
-  } = live;
-
+function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
   const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
-
   const realtime = fixtureId ? scoreByMatch[fixtureId] : undefined;
 
-  // ============================================================
-  // PRIORITIZE REALTIME SCORECARDS OVER INITIAL PROP
-  // ============================================================
-  const activeScorecards = realtime?.scorecards || scorecards || live.scorecards;
-  const hasScorecards = activeScorecards && activeScorecards.length > 0;
-  
-  const sortedInnings = hasScorecards
-    ? [...activeScorecards].sort((a, b) => a.inningsNo - b.inningsNo)
+  // 1. Determine the source of truth (SignalR realtime vs initial API live prop)
+  const scorecards = realtime?.scorecards?.length 
+    ? realtime.scorecards 
+    : (live as any)?.scorecards || [];
+    
+  // Sort by inningsNo descending to get the CURRENT innings
+  const sortedInnings = scorecards.length > 0 
+    ? [...scorecards].sort((a: any, b: any) => (b?.inningsNo ?? 0) - (a?.inningsNo ?? 0))
     : [];
+  const currentInnings = sortedInnings[0];
 
-  // Determine the current innings to figure out which team is batting
-  const currentInnings = sortedInnings.length > 0 ? sortedInnings[sortedInnings.length - 1] : null;
+  // 2. Robust Team Context Extraction
+  const homeTeamId = (live as any)?.homeTeamId ?? (live as any)?.batTeam?.homeTeamId;
+  const awayTeamId = (live as any)?.awayTeamId ?? (live as any)?.batTeam?.awayTeamId;
+  const homeTeamName = (live as any)?.homeTeamName ?? (live as any)?.batTeam?.homeTeamName;
+  const awayTeamName = (live as any)?.awayTeamName ?? (live as any)?.batTeam?.awayTeamName;
 
-  // Determine if the home team is batting based on the current innings or fallback
-  const isHomeBatting = (batTeam as any)?.isHome ?? 
-    (currentInnings ? currentInnings.battingTeamId === (live as any)?.homeTeamId : true);
+  // Determine who is batting right now
+  const battingTeamId = currentInnings?.battingTeamId || (live as any)?.battingTeamId;
+  
+  let isHomeBatting = true;
+  if (battingTeamId && homeTeamId) {
+    isHomeBatting = battingTeamId === homeTeamId;
+  } else if ((live as any)?.batTeam && typeof (live as any).batTeam.isHome === 'boolean') {
+    // Fallback to the explicit isHome flag if IDs are missing
+    isHomeBatting = (live as any).batTeam.isHome;
+  }
 
-  // Format the current score dynamically
-  const displayScore = realtime
-    ? isHomeBatting
-      ? `${realtime.homeScore}/${realtime.homeWickets ?? 0}`
-      : `${realtime.awayScore}/${realtime.awayWickets ?? 0}`
-    : `${batTeam?.teamScore ?? 0}/${batTeam?.teamWkts ?? 0}`;
+  const battingTeamName = isHomeBatting ? homeTeamName : awayTeamName;
 
-  // Format the current overs dynamically
-  const displayOvers = realtime
-    ? isHomeBatting
-      ? realtime.homeOvers ?? "0.0"
-      : realtime.awayOvers ?? "0.0"
-    : overs ?? (batTeam as any)?.homeOvers ?? "0.0";
+  // 3. Safe Score and Overs Extraction (Handles realtime vs API fallback)
+  let currentRuns = 0;
+  let currentWickets = 0;
+  let currentOvers = "0.0";
+
+  if (realtime) {
+    // Use SignalR data
+    currentRuns = isHomeBatting ? (realtime.homeScore ?? 0) : (realtime.awayScore ?? 0);
+    currentWickets = isHomeBatting ? (realtime.homeWickets ?? 0) : (realtime.awayWickets ?? 0);
+    currentOvers = isHomeBatting ? (realtime.homeOvers ?? "0.0") : (realtime.awayOvers ?? "0.0");
+  } else if (live) {
+    // Fallback to API response data
+    const apiRuns = isHomeBatting ? (live as any).homeScore : (live as any).awayScore;
+    const apiWickets = isHomeBatting ? (live as any).homeWickets : (live as any).awayWickets;
+    const apiOvers = isHomeBatting ? (live as any).homeOvers : (live as any).awayOvers;
+
+    if (apiRuns !== undefined && apiRuns !== null) {
+      currentRuns = apiRuns;
+      currentWickets = apiWickets ?? 0;
+      currentOvers = apiOvers ?? "0.0";
+    } else if ((live as any).batTeam) {
+      // Ultimate fallback if root properties are missing
+      currentRuns = (live as any).batTeam.teamScore ?? 0;
+      currentWickets = (live as any).batTeam.teamWkts ?? 0;
+      currentOvers = (live as any).batTeam.overs ?? (live as any).overs ?? "0.0";
+    }
+  }
+
+  const displayScore = `${currentRuns}/${currentWickets}`;
+  const displayOvers = currentOvers;
+
+  // Calculate CRR dynamically (handles the cricket over format like "1.1")
+  const calculateCRR = (runs: number, oversStr: string) => {
+    if (!oversStr || oversStr === "0.0") return "0.00";
+    const [overs, balls] = oversStr.split('.').map(Number);
+    const totalOvers = overs + (balls / 6);
+    return totalOvers > 0 ? (runs / totalOvers).toFixed(2) : "0.00";
+  };
+  
+  const displayCRR = calculateCRR(currentRuns, currentOvers);
+  const displayRRR = (live as any).requiredRunRate && (live as any).requiredRunRate > 0 
+    ? (live as any).requiredRunRate.toFixed(2) 
+    : null;
+
+  // 4. Map Figures (Avoiding Duplicates and Out Players)
+  const mapBattingFigure = (player: any) => ({
+    id: player?.playerId ?? player?.id ?? "",
+    name: player?.playerName ?? player?.name ?? "",
+    runs: player?.runs ?? 0,
+    balls: player?.balls ?? 0,
+    fours: player?.fours ?? 0,
+    sixes: player?.sixes ?? 0,
+    strikeRate: typeof player?.strikeRate === 'number' ? player.strikeRate.toFixed(2) : player?.strikeRate ?? "0.00",
+    playerUrl: "",
+    playerMatchHighlightsUrl: "",
+  });
+
+  const mapBowlingFigure = (player: any) => ({
+    id: player?.playerId ?? player?.id ?? "",
+    name: player?.playerName ?? player?.name ?? "",
+    overs: player?.overs ?? "0.0",
+    maidens: player?.maidens ?? 0,
+    runs: player?.runs ?? 0,
+    wickets: player?.wickets ?? 0,
+    economy: typeof player?.economy === 'number' ? player.economy.toFixed(2) : player?.economy ?? "0.00",
+    playerUrl: "",
+    playerMatchHighlightsUrl: "",
+  });
+
+  // Extract Batting Figures from the CURRENT innings
+  const battingFigures = currentInnings?.battingFigures || [];
+  
+  // Deduplicate and filter out dismissed players (out: true)
+  const uniqueBattingFigures = Array.from(
+    new Map(battingFigures.map((f: any) => [f.playerId || f.id, f])).values()
+  );
+  
+  const activeBatsmen = uniqueBattingFigures.filter((f: any) => f.out !== true);
+  const mappedActiveBatsmen = activeBatsmen.map(mapBattingFigure);
+
+  // Assign Striker and Non-Striker from active players
+  let liveBatsmanStriker = mappedActiveBatsmen[0] || null;
+  let liveBatsmanNonStriker = mappedActiveBatsmen[1] || null;
+
+  // Fallback to live props ONLY if they are not marked as out in the latest scorecard
+  if (!liveBatsmanStriker && (live as any).batsmanStriker) {
+    const isOut = uniqueBattingFigures.find(
+      (f: any) => (f.playerId || f.id) === ((live as any).batsmanStriker?.playerId || (live as any).batsmanStriker?.id)
+    )?.out;
+    if (!isOut) liveBatsmanStriker = mapBattingFigure((live as any).batsmanStriker);
+  }
+  
+  if (!liveBatsmanNonStriker && (live as any).batsmanNonStriker) {
+    const isOut = uniqueBattingFigures.find(
+      (f: any) => (f.playerId || f.id) === ((live as any).batsmanNonStriker?.playerId || (live as any).batsmanNonStriker?.id)
+    )?.out;
+    if (!isOut) liveBatsmanNonStriker = mapBattingFigure((live as any).batsmanNonStriker);
+  }
+
+  // Prevent duplicate names in UI
+  if (liveBatsmanStriker && liveBatsmanNonStriker && liveBatsmanStriker.id === liveBatsmanNonStriker.id) {
+    liveBatsmanNonStriker = null;
+  }
+
+  // Extract Bowling Figures from the CURRENT innings
+  const bowlingFigures = currentInnings?.bowlingFigures || [];
+  const uniqueBowlingFigures = Array.from(
+    new Map(bowlingFigures.map((f: any) => [f.playerId || f.id, f])).values()
+  );
+  
+  // The latest bowler is typically the last one in the array (most recent over)
+  const latestBowler = uniqueBowlingFigures.length > 0 
+    ? uniqueBowlingFigures[uniqueBowlingFigures.length - 1] 
+    : null;
+    
+  const liveBowlerStriker = latestBowler 
+    ? mapBowlingFigure(latestBowler) 
+    : ((live as any).bowlerStriker ? mapBowlingFigure((live as any).bowlerStriker) : null);
+
+  // 5. Dynamic Last Wicket (Only show if someone got out in the CURRENT innings)
+  const dismissedBatsman = battingFigures.find((f: any) => f.out === true);
+  const lastWicketDisplay = dismissedBatsman 
+    ? `${dismissedBatsman.playerName} dismissed` 
+    : null;
 
   return (
     <section className="live-match-details">
-      {/* ----- Current Score (from live feed) ----- */}
       <div className="live-match-details__score">
         <div>
-          <span className="live-match-details__label">Current Score</span>
+          <span className="live-match-details__label">
+            {battingTeamName ? `${battingTeamName} — Current Score` : "Current Score"}
+          </span>
           <h2>{displayScore}</h2>
           <span>{displayOvers} Overs</span>
         </div>
@@ -106,163 +206,96 @@ function LiveMatchDetails({ live, fixtureId, scorecards }: LiveMatchDetailsProps
         <div className="live-match-details__rates">
           <div>
             <span>CRR</span>
-            <strong>{currentRunRate}</strong>
+            <strong>{displayCRR}</strong>
           </div>
-          {requiredRunRate > 0 && (
+          {displayRRR && (
             <div>
               <span>RRR</span>
-              <strong>{requiredRunRate}</strong>
+              <strong>{displayRRR}</strong>
             </div>
           )}
         </div>
       </div>
 
-      {/* ----- Match Status (from live) ----- */}
-      <div className="live-match-details__status">{status}</div>
+      <div className="live-match-details__status">{live.status}</div>
 
-      {/* ----- Full Scorecards (if provided) ----- */}
-      {hasScorecards ? (
-        sortedInnings.map((innings) => (
-          <div key={innings.id} className="live-match-details__innings">
-            <h3>
-              Innings {innings.inningsNo}
-              {innings.inningsNo === 1 ? " (1st)" : " (2nd)"}
-            </h3>
-
-            {/* Batting figures */}
-            <div className="live-match-details__section">
-              <h4>Batting</h4>
-              <div className="live-match-details__table">
-                <div className="live-match-details__table-header">
-                  <span>Batter</span>
-                  <span>R</span>
-                  <span>B</span>
-                  <span>4s</span>
-                  <span>6s</span>
-                  <span>SR</span>
-                </div>
-                {innings.battingFigures.map((batter) => (
-                  <div key={batter.playerId} className="live-match-details__table-row">
-                    <span>{batter.playerName}</span>
-                    <span>{batter.runs}</span>
-                    <span>{batter.balls}</span>
-                    <span>{batter.fours}</span>
-                    <span>{batter.sixes}</span>
-                    <span>{batter.strikeRate}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="live-match-details__section">
-              <h4>Bowling</h4>
-              <div className="live-match-details__table">
-                <div className="live-match-details__bowling-header">
-                  <span>Bowler</span>
-                  <span>O</span>
-                  <span>M</span>
-                  <span>R</span>
-                  <span>W</span>
-                  <span>ECO</span>
-                </div>
-                {innings.bowlingFigures.map((bowler) => (
-                  <div key={bowler.playerId} className="live-match-details__bowling-row">
-                    <span>{bowler.playerName}</span>
-                    <span>{bowler.overs}</span>
-                    <span>{bowler.maidens}</span>
-                    <span>{bowler.runs}</span>
-                    <span>{bowler.wickets}</span>
-                    <span>{bowler.economy}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+      <div className="live-match-details__section">
+        <h3>Batting</h3>
+        <div className="live-match-details__table">
+          <div className="live-match-details__table-header">
+            <span>Batter</span>
+            <span>R</span>
+            <span>B</span>
+            <span>4s</span>
+            <span>6s</span>
+            <span>SR</span>
           </div>
-        ))
-      ) : (
-        // ----- Fallback: show only current batsmen and bowler (live) -----
-        <>
-          <div className="live-match-details__section">
-            <h3>Batting</h3>
-            <div className="live-match-details__table">
-              <div className="live-match-details__table-header">
-                <span>Batter</span>
-                <span>R</span>
-                <span>B</span>
-                <span>4s</span>
-                <span>6s</span>
-                <span>SR</span>
-              </div>
-              {batsmanStriker && (
-                <div className="live-match-details__table-row">
-                  <span>{batsmanStriker.name} *</span>
-                  <span>{batsmanStriker.runs}</span>
-                  <span>{batsmanStriker.balls}</span>
-                  <span>{batsmanStriker.fours}</span>
-                  <span>{batsmanStriker.sixes}</span>
-                  <span>{batsmanStriker.strikeRate}</span>
-                </div>
-              )}
-              {batsmanNonStriker && (
-                <div className="live-match-details__table-row">
-                  <span>{batsmanNonStriker.name}</span>
-                  <span>{batsmanNonStriker.runs}</span>
-                  <span>{batsmanNonStriker.balls}</span>
-                  <span>{batsmanNonStriker.fours}</span>
-                  <span>{batsmanNonStriker.sixes}</span>
-                  <span>{batsmanNonStriker.strikeRate}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {bowlerStriker && (
-            <div className="live-match-details__section">
-              <h3>Bowling</h3>
-              <div className="live-match-details__table">
-                <div className="live-match-details__bowling-header">
-                  <span>Bowler</span>
-                  <span>O</span>
-                  <span>M</span>
-                  <span>R</span>
-                  <span>W</span>
-                  <span>ECO</span>
-                </div>
-                <div className="live-match-details__bowling-row">
-                  <span>{bowlerStriker.name}</span>
-                  <span>{bowlerStriker.overs}</span>
-                  <span>{bowlerStriker.maidens}</span>
-                  <span>{bowlerStriker.runs}</span>
-                  <span>{bowlerStriker.wickets}</span>
-                  <span>{bowlerStriker.economy}</span>
-                </div>
-              </div>
+          {liveBatsmanStriker && (
+            <div className="live-match-details__table-row">
+              <span>{liveBatsmanStriker.name} *</span>
+              <span>{liveBatsmanStriker.runs}</span>
+              <span>{liveBatsmanStriker.balls}</span>
+              <span>{liveBatsmanStriker.fours}</span>
+              <span>{liveBatsmanStriker.sixes}</span>
+              <span>{liveBatsmanStriker.strikeRate}</span>
             </div>
           )}
-        </>
+          {liveBatsmanNonStriker && (
+            <div className="live-match-details__table-row">
+              <span>{liveBatsmanNonStriker.name}</span>
+              <span>{liveBatsmanNonStriker.runs}</span>
+              <span>{liveBatsmanNonStriker.balls}</span>
+              <span>{liveBatsmanNonStriker.fours}</span>
+              <span>{liveBatsmanNonStriker.sixes}</span>
+              <span>{liveBatsmanNonStriker.strikeRate}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {liveBowlerStriker && (
+        <div className="live-match-details__section">
+          <h3>Bowling</h3>
+          <div className="live-match-details__table">
+            <div className="live-match-details__bowling-header">
+              <span>Bowler</span>
+              <span>O</span>
+              <span>M</span>
+              <span>R</span>
+              <span>W</span>
+              <span>ECO</span>
+            </div>
+            <div className="live-match-details__bowling-row">
+              <span>{liveBowlerStriker.name}</span>
+              <span>{liveBowlerStriker.overs}</span>
+              <span>{liveBowlerStriker.maidens}</span>
+              <span>{liveBowlerStriker.runs}</span>
+              <span>{liveBowlerStriker.wickets}</span>
+              <span>{liveBowlerStriker.economy}</span>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* ----- Partnership, Last Wicket, Recent Overs (always from live) ----- */}
-      {partnerShip && (
+      {(live as any).partnerShip && (
         <div className="live-match-details__info-row">
           <span>Partnership</span>
-          <strong>
-            {partnerShip.runs} runs ({partnerShip.balls} balls)
-          </strong>
+          <strong>{(live as any).partnerShip.runs} runs ({(live as any).partnerShip.balls} balls)</strong>
         </div>
       )}
 
-      {lastWicket && (
+      {/* Dynamic Last Wicket - Only shows if someone is out in the current innings */}
+      {lastWicketDisplay && (
         <div className="live-match-details__info-row">
           <span>Last Wicket</span>
-          <strong>{lastWicket}</strong>
+          <strong>{lastWicketDisplay}</strong>
         </div>
       )}
 
-      {recentOvsStats && (
+      {(live as any).recentOvsStats && (
         <div className="live-match-details__recent">
           <h3>Recent Overs</h3>
-          <p>{recentOvsStats}</p>
+          <p>{(live as any).recentOvsStats}</p>
         </div>
       )}
     </section>
