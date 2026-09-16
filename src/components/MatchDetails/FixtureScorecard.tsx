@@ -571,15 +571,7 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
                     )}
                   </div>
 
-                  <span
-                    style={{
-                      color: "#9fb0ca",
-                      fontSize: "12px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {time}
-                  </span>
+                 
                 </div>
               );
             })
