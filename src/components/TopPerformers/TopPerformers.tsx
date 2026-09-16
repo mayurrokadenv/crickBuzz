@@ -18,11 +18,20 @@ function TopPerformers({ fixtureId }: Props) {
   const [performers, setPerformers] = useState<Performer[]>([]);
 
   useEffect(() => {
-    if (!fixtureId) return;
+    let cancelled = false;
+
+    if (!fixtureId) {
+      setPerformers([]);
+      return;
+    }
+
+    setPerformers([]);
 
     const loadPerformers = async () => {
       try {
         const response = await getTopPerformers(fixtureId);
+
+        if (cancelled) return;
 
         const colors = [
           "#d1d984",
@@ -42,10 +51,17 @@ function TopPerformers({ fixtureId }: Props) {
         setPerformers(mapped);
       } catch (error) {
         console.error("Failed to load performers", error);
+        if (!cancelled) {
+          setPerformers([]);
+        }
       }
     };
 
     loadPerformers();
+
+    return () => {
+      cancelled = true;
+    };
   }, [fixtureId]);
 
   return (
