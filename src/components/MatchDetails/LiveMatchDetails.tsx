@@ -137,19 +137,21 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
   });
 
   // Extract Batting Figures from the CURRENT innings
-  const battingFigures = currentInnings?.battingFigures || [];
-  
+  const battingFigures = (currentInnings?.battingFigures ?? []) as any[];
+
   // Deduplicate and filter out dismissed players (out: true)
   const uniqueBattingFigures = Array.from(
-    new Map(battingFigures.map((f: any) => [f.playerId || f.id, f])).values()
-  );
-  
+    new Map(battingFigures.map((f: any) => [f.playerId || f.id, f])).values(),
+  ) as any[];
+
   const activeBatsmen = uniqueBattingFigures.filter((f: any) => f.out !== true);
   const mappedActiveBatsmen = activeBatsmen.map(mapBattingFigure);
 
   // Assign Striker and Non-Striker from active players
-  let liveBatsmanStriker = mappedActiveBatsmen[0] || null;
-  let liveBatsmanNonStriker = mappedActiveBatsmen[1] || null;
+  let liveBatsmanStriker: ReturnType<typeof mapBattingFigure> | null =
+    mappedActiveBatsmen[0] || null;
+  let liveBatsmanNonStriker: ReturnType<typeof mapBattingFigure> | null =
+    mappedActiveBatsmen[1] || null;
 
   // Fallback to live props ONLY if they are not marked as out in the latest scorecard
   if (!liveBatsmanStriker && (live as any).batsmanStriker) {
@@ -172,10 +174,10 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
   }
 
   // Extract Bowling Figures from the CURRENT innings
-  const bowlingFigures = currentInnings?.bowlingFigures || [];
+  const bowlingFigures = (currentInnings?.bowlingFigures ?? []) as any[];
   const uniqueBowlingFigures = Array.from(
-    new Map(bowlingFigures.map((f: any) => [f.playerId || f.id, f])).values()
-  );
+    new Map(bowlingFigures.map((f: any) => [f.playerId || f.id, f])).values(),
+  ) as any[];
   
   // The latest bowler is typically the last one in the array (most recent over)
   const latestBowler = uniqueBowlingFigures.length > 0 
