@@ -4,6 +4,7 @@ import { getFixtureMatchDetails } from "../../services/MatchDataService.tsx";
 import { useCommentaryFeed } from "../../hooks/useCommentaryFeed.ts";
 
 import CommentaryBox, { type Comment } from "../Commentary/CommentaryBox.tsx";
+import Loader from "../Loader/Loader";
 
 import type { FixtureDetailsDto } from "../types/FixtureDetails";
 
@@ -17,22 +18,46 @@ function NVianCommentary({ fixtureId, title }: Props) {
     useState<FixtureDetailsDto | null>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const { commentaryByMatch } = useCommentaryFeed(fixtureId ?? "");
 
   const liveComment = fixtureId ? commentaryByMatch[fixtureId] : undefined;
   useEffect(() => {
-    if (!fixtureId) return;
+    let cancelled = false;
+
+    if (!fixtureId) {
+      setComments([]);
+      setFixtureDetails(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     setComments([]);
+
     const loadFixture = async () => {
       try {
         const response = await getFixtureMatchDetails(fixtureId);
+        if (cancelled) return;
         setFixtureDetails(response);
       } catch (error) {
         console.error(error);
+        if (!cancelled) {
+          setFixtureDetails(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
+
     loadFixture();
+
+    return () => {
+      cancelled = true;
+    };
   }, [fixtureId]);
 
   // Load initial commentary from API
@@ -83,6 +108,19 @@ function NVianCommentary({ fixtureId, title }: Props) {
       return [mappedComment, ...previous];
     });
   }, [liveComment]);
+
+  if (loading) {
+    return (
+      <div className="commentary-box card">
+        <div className="commentary-box__header">
+          <h2>{title}</h2>
+        </div>
+        <div className="commentary-box__body">
+          <Loader label="Loading commentary..." />
+        </div>
+      </div>
+    );
+  }
 
   return <CommentaryBox title={title} comments={comments} />;
 }

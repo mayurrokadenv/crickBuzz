@@ -38,7 +38,10 @@
 
     padding:18px;
 
-    transition:.25s;
+    cursor:pointer;
+    outline:none;
+    position:relative;
+    transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
 
 }
 
@@ -47,6 +50,25 @@
     transform:translateY(-4px);
 
     border-color:#4d607d;
+    box-shadow:0 12px 24px rgba(0, 0, 0, .2);
+
+}
+
+.match-card:focus-visible {
+    border-color:#7db7ff;
+    box-shadow:0 0 0 3px rgba(125, 183, 255, .28), 0 12px 24px rgba(0, 0, 0, .2);
+
+}
+
+.match-card--selected {
+    background:#202b3a;
+    border-color:#4d9cff;
+    box-shadow:0 0 0 1px rgba(77, 156, 255, .28), 0 10px 24px rgba(0, 0, 0, .2);
+}
+
+.match-card--selected:hover {
+    border-color:#70b4ff;
+    box-shadow:0 0 0 1px rgba(112, 180, 255, .35), 0 14px 28px rgba(0, 0, 0, .24);
 
 }
 
@@ -190,12 +212,28 @@
     }
 
 }
-.match-card--selected{
-    border:2px solid #00c853;
-}
 .match-card__view-button
 {
-    color : whitesmoke
+    background:transparent;
+    border:1px solid #52627a;
+    border-radius:6px;
+    color:#dbeafe;
+    cursor:pointer;
+    font-size:.75rem;
+    font-weight:700;
+    padding:5px 10px;
+    transition:background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.match-card__view-button:hover {
+    background:#2d4058;
+    border-color:#8bbcff;
+    color:#ffffff;
+}
+
+.match-card__view-button:focus-visible {
+    outline:2px solid #8bbcff;
+    outline-offset:2px;
 }
 
 .match-card__live--active {

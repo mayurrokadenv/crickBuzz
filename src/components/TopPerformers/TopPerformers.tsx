@@ -1,6 +1,7 @@
 import "./TopPerformers.css";
 import { useEffect, useState } from "react";
 import { getTopPerformers } from "../../services/MatchDataService";
+import Loader from "../Loader/Loader";
 
 export interface Performer {
   rank: number;
@@ -16,15 +17,18 @@ type Props = {
 
 function TopPerformers({ fixtureId }: Props) {
   const [performers, setPerformers] = useState<Performer[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     if (!fixtureId) {
       setPerformers([]);
+      setLoading(false);
       return;
     }
 
+    setLoading(true);
     setPerformers([]);
 
     const loadPerformers = async () => {
@@ -54,6 +58,10 @@ function TopPerformers({ fixtureId }: Props) {
         if (!cancelled) {
           setPerformers([]);
         }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
@@ -71,7 +79,9 @@ function TopPerformers({ fixtureId }: Props) {
       </div>
 
       <div className="tp-body">
-        {performers.length > 0 ? (
+        {loading ? (
+          <Loader label="Loading top performers..." />
+        ) : performers.length > 0 ? (
           performers.map((player) => (
             <div className="tp-row" key={player.rank}>
               <div
