@@ -195,7 +195,7 @@ function RecentEntries({ fixtureId, refreshTrigger }: RecentEntriesProps) {
                             {editData.event}
                           </span>
                         </div>
-                        <span className="editTime">{editData.time}</span>
+                        {/* <span className="editTime">{editData.time}</span> */}
                       </div>
                     </div>
                     <button className="close-btn" onClick={handleCancelEdit}>
@@ -248,7 +248,7 @@ function RecentEntries({ fixtureId, refreshTrigger }: RecentEntriesProps) {
                           <span className="comment"> - {item.comment}</span>
                         )}
                       </p>
-                      <span className="time">{item.time}</span>
+                      {/* <span className="time">{item.time}</span> */}
                     </div>
                   </div>
                   <div className="actionButtons">
