@@ -42,7 +42,11 @@ function MatchDetailsPage() {
   const source: MatchSource = pathname.startsWith("/fixture")
     ? "fixture"
     : "cricbuzz";
-  const showStats = (state as { dashboard?: string } | null)?.dashboard !== "nvian";
+
+  // Fixture details pages are internal NVian fixture views and must never show
+  // the Stats tab, even if a tab query param or prior route state tries to
+  // restore it after a tab change.
+  const showStats = source !== "fixture";
 
   const [matchDetails, setMatchDetails] = useState<MatchDetailsModel | null>(
     null,
@@ -72,10 +76,14 @@ function MatchDetailsPage() {
           ? "Stats"
           : "Live";
 
-    setActiveTab((currentTab) =>
-      currentTab === nextTab ? currentTab : nextTab,
-    );
-  }, [requestedTab]);
+    setActiveTab((currentTab) => {
+      if (!showStats && currentTab === "Stats") {
+        return "Live";
+      }
+
+      return currentTab === nextTab ? currentTab : nextTab;
+    });
+  }, [requestedTab, showStats]);
 
   const handleTabChange = (tab: MatchTab) => {
     setActiveTab(tab);

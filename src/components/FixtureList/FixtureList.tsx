@@ -5,14 +5,14 @@ import { fixtureService, type Fixture } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
 import Loader from "../Loader/Loader";
 
-interface EditableFixture extends Fixture {
+type EditableFixture = Omit<Fixture, "battingTeamId"> & {
   homeOvers?: string;
   awayOvers?: string;
   statusValue: number;
   phaseValue: number;
   battingTeamId?: string;
   originalStatusValue?: number;
-}
+};
 
 interface FixtureListProps {
   refreshKey: number;
