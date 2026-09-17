@@ -55,6 +55,7 @@ function NVianDashboard() {
       <SportTabs
         selectedSportId={selectedSportId}
         onSportChange={setSelectedSportId}
+        showPointsTable
       />
       {loading ? (
         <section className="dashboard-empty-state">

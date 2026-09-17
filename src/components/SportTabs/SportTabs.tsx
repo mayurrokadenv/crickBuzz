@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../SportTabs/SportTabs.css";
 
 interface Sport {
@@ -9,13 +10,16 @@ interface Sport {
 interface SportTabsProps {
     selectedSportId: string;
     onSportChange: (sportId: string) => void;
+    showPointsTable?: boolean;
 }
 
 const SportTabs = ({
     selectedSportId,
     onSportChange,
+    showPointsTable = false,
 }: SportTabsProps) => {
     const [sportsCategories, setSportsCategories] = useState<Sport[]>([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
         loadSports();
@@ -44,6 +48,7 @@ const SportTabs = ({
     };
 
     return (
+        <>
         <section className="sports-tabs">
             {sportsCategories.map((sport) => (
                 <button
@@ -55,7 +60,20 @@ const SportTabs = ({
                     {sport.name}
                 </button>
             ))}
+
+            {showPointsTable && (
+                <button
+                    type="button"
+                    className="sports-tabs__points-table"
+                    onClick={() => navigate("/points-table")}
+                >
+                    Points Table
+                </button>
+            )}
         </section>
+
+        
+        </>
     );
 };
 

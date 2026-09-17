@@ -58,13 +58,15 @@ export const fixtureService = {
     status: number,
     phase: number,
     scheduledAtUtc: string,
-    battingTeamId: string
+    battingTeamId: string | null,
+    winningTeamId?: string | null, // NEW
   ): Promise<Fixture> {
     const response = await api.patch(`fixtures/${id}`, {
       status,
       phase,
       scheduledAtUtc,
-      battingTeamId
+      battingTeamId,
+      winningTeamId,
     });
     console.log("Response from server==================:", response.config.url, response.status, response.statusText);
 

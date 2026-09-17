@@ -65,6 +65,16 @@ export type FixtureScorecardInnings = {
   bowlingFigures: BowlingFigure[];
 };
 
+// The API now returns scorecards as an object keyed by innings
+// ({ innings1, innings2, ... }) rather than a flat array. Each value can be
+// null when that innings hasn't started yet. We still support the old
+// array shape defensively in case any endpoint hasn't migrated.
+export type FixtureScorecardsByInnings = {
+  innings1?: FixtureScorecardInnings | null;
+  innings2?: FixtureScorecardInnings | null;
+  [key: string]: FixtureScorecardInnings | null | undefined;
+};
+
 export type FixtureScorecard = {
   id: string;
   homeTeamId: string;
@@ -90,8 +100,8 @@ export type FixtureScorecard = {
 
   topPerformers: TopPerformer[];
 
-  /* NEW */
-  scorecards: FixtureScorecardInnings[];
+  /* NEW: object keyed by innings, e.g. { innings1, innings2 } */
+  scorecards: FixtureScorecardsByInnings | FixtureScorecardInnings[];
 };
 
 type ScoreCardProps = {
@@ -107,6 +117,21 @@ const ACTION_LABEL: Record<string, string> = {
   Two: "Two runs",
 };
 
+// Normalizes either shape (old array, or new { innings1, innings2, ... }
+// object) into a flat array of the non-null innings, sorted ascending by
+// inningsNo so 1st innings always renders above 2nd innings.
+function normalizeScorecards(
+  raw: FixtureScorecardsByInnings | FixtureScorecardInnings[] | null | undefined,
+): FixtureScorecardInnings[] {
+  if (!raw) return [];
+
+  const list: FixtureScorecardInnings[] = Array.isArray(raw)
+    ? raw.filter(Boolean)
+    : (Object.values(raw).filter(Boolean) as FixtureScorecardInnings[]);
+
+  return [...list].sort((a, b) => (a?.inningsNo ?? 0) - (b?.inningsNo ?? 0));
+}
+
 function FixtureScoreCard({ fixture }: ScoreCardProps) {
   const [activeSide, setActiveSide] = useState<"All" | "Home" | "Away">(
     "All",
@@ -120,12 +145,15 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
   // PRIORITIZE REALTIME DATA OVER INITIAL FIXTURE PROP
   // ============================================================
 
-  // If the realtime payload has scorecards, use those. Otherwise
-  // fall back to the fixture prop (initial page load data).
+  // Normalize both possible sources (old array shape, new
+  // { innings1, innings2 } object shape) into a flat, sorted array.
+  const realtimeScorecards = normalizeScorecards(
+    (realtime as any)?.scorecards,
+  );
+  const fixtureScorecards = normalizeScorecards(fixture?.scorecards);
+
   const activeScorecards =
-    realtime?.scorecards && realtime.scorecards.length > 0
-      ? realtime.scorecards
-      : fixture?.scorecards ?? [];
+    realtimeScorecards.length > 0 ? realtimeScorecards : fixtureScorecards;
 
   // Commentary: allow future realtime override, fall back to fixture prop
   const activeCommentary =

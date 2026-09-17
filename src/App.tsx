@@ -17,6 +17,7 @@ import { NVianDashboardSearchProvider } from "./context/NVianDashboardSearchCont
 import { DashboardSearchProvider } from "./context/DashboardSearchContext.tsx";
 import { RegistrationProvider } from "./context/RegistrationContext.tsx";
 import Series from "./Pages/Admin/Series.tsx";
+import PointsTable from "./Pages/PointsTable.tsx";
 
 function App() {
     return (
@@ -32,6 +33,7 @@ function App() {
                                 <Route path="/register" element={<RegistrationForm />} />
                             
                             <Route path="/nvian" element={<NVianDashboard />} />
+                            <Route path="/points-table" element={<PointsTable />} />
                             <Route path="/match/:matchId" element={<MatchDetailsPage />} />
                             <Route path="/fixture/:matchId" element={<MatchDetailsPage />} />
 

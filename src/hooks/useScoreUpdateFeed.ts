@@ -38,6 +38,7 @@ export interface Scorecard {
 // Shape used by UI
 export interface ScoreUpdate {
   fixtureId: string;
+  battingTeamId?: string;
   homeScore: number;
   homeWickets?: number;
   homeOvers?: string;
@@ -51,6 +52,7 @@ export interface ScoreUpdate {
 // Shape received from backend SignalR
 interface BackendScoreUpdate {
   fixtureId: string;
+  battingTeamId?: string;
   homeRuns: number;
   homeOvers?: string;
   awayOvers?: string;
@@ -95,6 +97,7 @@ function ensureSharedConnection() {
 
     const scoreUpdate: ScoreUpdate = {
       fixtureId,
+      battingTeamId: getUpdateValue<string>(update, "battingTeamId", "BattingTeamId"),
       homeScore: getUpdateValue<number>(update, "homeRuns", "HomeRuns") ?? 0,
       homeWickets: getUpdateValue<number>(update, "homeWickets", "HomeWickets"),
       awayScore: getUpdateValue<number>(update, "awayRuns", "AwayRuns") ?? 0,

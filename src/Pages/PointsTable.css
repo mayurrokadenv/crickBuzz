@@ -1,0 +1,445 @@
+/* ==============================
+   Page Container
+   ============================== */
+.points-table-page__content {
+  margin-top: 32px;
+  padding: 36px 40px;
+  background: #12161f;
+  border: 1px solid #232a37;
+  border-radius: 16px;
+}
+
+/* ==============================
+   Page Header
+   ============================== */
+.points-table-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #1f2530;
+}
+
+.points-table-page__eyebrow {
+  margin: 0 0 8px;
+  color: #7aa8e0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.points-table-page h1 {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: 3.16rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.points-table-page__subtitle {
+  margin: 0;
+  color: #7d8593;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  max-width: 520px;
+}
+
+/* ==============================
+   Dropdown
+   ============================== */
+.points-table-page__dropdown-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 360px;
+  margin-bottom: 28px;
+}
+
+.points-table-page__label {
+  color: #7d8593;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.points-table-page__select-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.points-table-page__select {
+  width: 100%;
+  padding: 11px 40px 11px 14px;
+  background: #171c26;
+  color: #ffffff;
+  border: 1px solid #2a3140;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: border-color 0.15s ease;
+}
+
+.points-table-page__select:hover {
+  border-color: #3a4254;
+}
+
+.points-table-page__select:focus {
+  border-color: #7aa8e0;
+}
+
+.points-table-page__select option {
+  background: #171c26;
+  color: #ffffff;
+}
+
+.points-table-page__select-chevron {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #7d8593;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+/* ==============================
+   Table Wrapper
+   ============================== */
+.points-table-page__table-wrapper {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #1f2530;
+}
+
+/* ==============================
+   Table
+   ============================== */
+.points-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.points-table th:nth-child(1),
+.points-table td:nth-child(1) {
+  width: 56px;
+}
+
+.points-table th:nth-child(2),
+.points-table td:nth-child(2) {
+  width: auto;
+}
+
+.points-table th:nth-child(3),
+.points-table td:nth-child(3),
+.points-table th:nth-child(4),
+.points-table td:nth-child(4),
+.points-table th:nth-child(5),
+.points-table td:nth-child(5) {
+  width: 72px;
+}
+
+.points-table th:nth-child(6),
+.points-table td:nth-child(6) {
+  width: 88px;
+}
+
+.points-table thead {
+  background: #171c26;
+}
+
+.points-table th {
+  color: #f5f6f7;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 14px 18px;
+  text-align: left;
+  border-bottom: 1px solid #1f2530;
+}
+
+.points-table th.points-table__th--center {
+  text-align: center;
+  letter-spacing: normal;
+}
+
+.points-table__th--center {
+  text-align: center;
+  letter-spacing: normal;
+}
+
+.points-table td {
+  padding: 14px 18px;
+  color: #d8dde5;
+  font-size: 0.99rem;
+  border-bottom: 1px solid #1a1f29;
+}
+
+.points-table__td--center {
+  text-align: center;
+}
+
+.points-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.points-table tbody tr:hover td {
+  background-color: #171c26;
+}
+
+/* ==============================
+   Rank Badge — minimal, text-based
+   ============================== */
+.points-table__rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 0.99rem;
+  font-weight: 600;
+  color: #7d8593;
+}
+
+.points-table__rank--gold {
+  color: #f0b429;
+}
+
+.points-table__rank--silver {
+  color: #c3cad4;
+}
+
+.points-table__rank--bronze {
+  color: #d68a4c;
+}
+
+/* ==============================
+   Team Cell
+   ============================== */
+.points-table__team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.points-table__team-avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #232a37;
+  color: #b7c1cf;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.points-table__team-name {
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* ==============================
+   Stats Cells
+   ============================== */
+.points-table__td--won {
+  color: #6ee7a0;
+}
+
+.points-table__td--lost {
+  color: #f28b82;
+}
+
+.points-table__points {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.points-table th:not(.points-table__th--center) {
+  letter-spacing: 0.08em;
+}
+
+/* ==============================
+   Empty States
+   ============================== */
+.points-table-page__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 52px 24px;
+  text-align: center;
+  background: #171c26;
+  border: 1px dashed #2a3140;
+  border-radius: 12px;
+}
+
+.points-table-page__empty-state--small {
+  padding: 40px 24px;
+}
+
+.points-table-page__empty-icon {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+  opacity: 0.7;
+}
+
+.points-table-page__empty-title {
+  margin: 0 0 4px;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.points-table-page__empty-text {
+  margin: 0;
+  color: #7d8593;
+  font-size: 0.82rem;
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+/* ==============================
+   Skeletons
+   ============================== */
+.points-table-page__select-skeleton {
+  height: 42px;
+  width: 100%;
+  max-width: 360px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #171c26 25%, #1f2530 50%, #171c26 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+.points-table-page__table-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: #1a1f29;
+  padding: 1px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.points-table-page__skeleton-row {
+  height: 54px;
+  background: linear-gradient(90deg, #12161f 25%, #171c26 50%, #12161f 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ==============================
+   Responsive
+   ============================== */
+@media (max-width: 768px) {
+  .points-table-page__content {
+    padding: 22px 18px;
+    border-radius: 14px;
+  }
+
+  .points-table-page h1 {
+    font-size: 1.35rem;
+  }
+
+  .points-table th,
+  .points-table td {
+    padding: 11px 10px;
+    font-size: 0.8rem;
+  }
+
+  .points-table th:nth-child(1),
+  .points-table td:nth-child(1) {
+    width: 44px;
+  }
+
+  .points-table th:nth-child(3),
+  .points-table td:nth-child(3),
+  .points-table th:nth-child(4),
+  .points-table td:nth-child(4),
+  .points-table th:nth-child(5),
+  .points-table td:nth-child(5) {
+    width: 52px;
+  }
+
+  .points-table th:nth-child(6),
+  .points-table td:nth-child(6) {
+    width: 68px;
+  }
+
+  .points-table__team-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 0.6rem;
+  }
+
+  .points-table__team {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .points-table-page__content {
+    padding: 18px 12px;
+  }
+
+  .points-table th,
+  .points-table td {
+    padding: 9px 7px;
+    font-size: 0.76rem;
+  }
+
+  .points-table th:nth-child(1),
+  .points-table td:nth-child(1) {
+    width: 36px;
+  }
+
+  .points-table th:nth-child(3),
+  .points-table td:nth-child(3),
+  .points-table th:nth-child(4),
+  .points-table td:nth-child(4),
+  .points-table th:nth-child(5),
+  .points-table td:nth-child(5) {
+    width: 36px;
+  }
+
+  .points-table th:nth-child(6),
+  .points-table td:nth-child(6) {
+    width: 56px;
+  }
+
+  .points-table__team-avatar {
+    width: 22px;
+    height: 22px;
+    font-size: 0.55rem;
+  }
+}

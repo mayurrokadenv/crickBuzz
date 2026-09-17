@@ -98,6 +98,20 @@ const footballQuickActions = [
   { label: "🧤 Save", type: "save", icon: "🧤", color: "#10B981", bgColor: "#D1FAE5", borderColor: "#10B981", selectedBg: "#10B981", selectedColor: "#FFFFFF" },
 ];
 
+// The API now returns `scorecards` as an object keyed by innings
+// (e.g. { innings1: {...}, innings2: null }) instead of a flat array.
+// This normalizes either shape into a flat array of non-null innings so
+// all the existing .filter/.sort/.some logic below keeps working.
+// Without this, effectiveScorecards silently became [] for every fixture,
+// which broke out-player filtering, current-batsmen highlighting, the
+// consecutive-over bowler restriction, and the auto innings-switch checks.
+function normalizeScorecards(raw: any): any[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (typeof raw === "object") return Object.values(raw).filter(Boolean);
+  return [];
+}
+
 const MAX_WICKETS = 10; // fallback only
 
 interface WinnerResult {
@@ -260,10 +274,17 @@ function AddCommentary({
   };
 
   const currentFixture = liveFixturesList.find((f) => f.id === selectedFixtureId);
-  const effectiveScorecards: any[] =
-    currentFixture?.scorecards && currentFixture.scorecards.length > 0
-      ? currentFixture.scorecards
-      : selectedMatch?.scorecards || [];
+
+  // Normalize BOTH sources (old array shape, new { innings1, innings2 }
+  // object shape) before picking whichever one has data. This is the fix:
+  // previously `currentFixture.scorecards.length` was `undefined` on the
+  // new object shape, so this always fell through to `selectedMatch?.scorecards`
+  // (also potentially an object), and effectiveScorecards ended up [] always.
+  const effectiveScorecards: any[] = (() => {
+    const fromFixture = normalizeScorecards(currentFixture?.scorecards);
+    if (fromFixture.length > 0) return fromFixture;
+    return normalizeScorecards(selectedMatch?.scorecards);
+  })();
 
   // ============================================================
   // ⭐ NEW: BOWLER RESTRICTION HELPERS
@@ -702,7 +723,8 @@ function AddCommentary({
           1, // status = Live
           1, // phase  = SecondInnings
           currentFixture?.scheduledAtUtc || "",
-          otherTeam.id, // next batting team
+          otherTeam.id, // next batting team,
+          null, // no winner yet
         );
 
         showSuccess(
@@ -750,7 +772,8 @@ function AddCommentary({
           2, // status = Completed
           1, // phase  = SecondInnings (keep)
           currentFixture?.scheduledAtUtc || "",
-          winningTeamId ?? battingTeamId ?? "",
+          battingTeamId,
+          winningTeamId,
         );
 
         showSuccess("Match Completed", winnerInfo.text);
