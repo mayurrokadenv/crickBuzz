@@ -251,7 +251,7 @@ function RecentEntries({ fixtureId, refreshTrigger }: RecentEntriesProps) {
                       {/* <span className="time">{item.time}</span> */}
                     </div>
                   </div>
-                  <div className="actionButtons">
+                  {/* <div className="actionButtons">
                     <button
                       className="edit-btn"
                       onClick={() => handleEditClick(item)}
@@ -260,7 +260,7 @@ function RecentEntries({ fixtureId, refreshTrigger }: RecentEntriesProps) {
                       ✎ Edit
                     </button>
                     <button className="close-btn">×</button>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>
