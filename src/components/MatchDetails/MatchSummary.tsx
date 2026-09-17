@@ -99,7 +99,7 @@ function MatchSummary({ header, live }: MatchSummaryProps) {
 
       <div className="match-summary__result">
         {header.result.winningTeam
-          ? `Winner: ${header.result.winningTeam}`
+          ? `${header.result.winningTeam} won`
           : header.status}
       </div>
     </section>

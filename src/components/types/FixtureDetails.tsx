@@ -17,6 +17,7 @@ export interface FixtureDetailsDto {
   homeWickets: number | null;
   awayScore: number;
   awayWickets: number | null;
+  winningTeamId?: string | null;
   commentary: CommentaryDto[];
   topPerformers: TopPerformerDto[];
   scorecards?: Scorecard[];

@@ -1,5 +1,4 @@
 import "./MatchHeader.css";
-import type { CricbuzzMatchHeader } from "../types/CricbuzzLiveMatchInfo";
 import type { MatchHeaderModel } from "../types/MatchDetailsModel";
 import Header from "../Header/Header";
 
@@ -11,6 +10,10 @@ type MatchHeaderProps = {
 };
 
 function MatchHeader({ header }: MatchHeaderProps) {
+  const resultText = header.result.winningTeam
+    ? `${header.result.winningTeam} won the match`
+    : header.status;
+
   return (
   <>
   {/* <main className="container"> */}
@@ -43,6 +46,10 @@ function MatchHeader({ header }: MatchHeaderProps) {
         <span>
           {new Date(header.matchStartTimestamp).toLocaleDateString()}
         </span>
+      </div>
+
+      <div className="match-header__result" aria-live="polite">
+        {resultText}
       </div>
 
     </section>

@@ -287,10 +287,25 @@ export function mapFixtureMatchDetails(
 
       result: {
         resultType: null,
-        winningTeam: null,
-        winningTeamId: null,
-        winningMargin: null,
-        winByRuns: null,
+        winningTeam:
+          response.winningTeamId === response.homeTeamId
+            ? response.homeTeamName
+            : response.winningTeamId === response.awayTeamId
+              ? response.awayTeamName
+              : null,
+        winningTeamId: response.winningTeamId ?? null,
+        winningMargin:
+          response.winningTeamId === response.homeTeamId
+            ? Math.max(0, response.homeScore - response.awayScore)
+            : response.winningTeamId === response.awayTeamId
+              ? Math.max(0, 10 - (response.awayWickets ?? 0))
+              : null,
+        winByRuns:
+          response.winningTeamId === response.homeTeamId
+            ? true
+            : response.winningTeamId === response.awayTeamId
+              ? false
+              : null,
         winByInnings: null,
       },
 

@@ -64,3 +64,14 @@
 
     opacity:.75;
 }
+
+.match-header__result{
+
+    margin-top:2px;
+
+    color:#45d483;
+
+    font-size:18px;
+
+    font-weight:700;
+}
