@@ -24,7 +24,6 @@ function FixtureListItem({
   editingId,
   setEditingId,
   handleDelete,
-  handleDateChange,
   handleChange,
   handleSave,
 }: {
@@ -33,7 +32,6 @@ function FixtureListItem({
   editingId: string | null;
   setEditingId: (id: string | null) => void;
   handleDelete: (id: string) => Promise<void>;
-  handleDateChange: (index: number, value: string) => void;
   handleChange: (
     index: number,
     field: "statusValue" | "phaseValue" | "battingTeamId",
@@ -91,8 +89,8 @@ function FixtureListItem({
             <input
               type="datetime-local"
               value={getLocalDateTimeString(fixture.scheduledAtUtc)}
-              disabled={!canEdit}
-              onChange={(e) => handleDateChange(index, e.target.value)}
+              disabled
+              aria-label="Scheduled date and time cannot be edited"
             />
 
             <select
@@ -312,16 +310,6 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
     });
   };
 
-  const handleDateChange = (index: number, value: string) => {
-    const copy = [...fixtures];
-    copy[index] = {
-      ...copy[index],
-      scheduledAtUtc: value,
-    };
-
-    setFixtures(copy);
-  };
-
   const handleSave = async (fixture: EditableFixture) => {
     try {
       const updated = await fixtureService.updateFixture(
@@ -403,7 +391,6 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
           editingId={editingId}
           setEditingId={setEditingId}
           handleDelete={handleDelete}
-          handleDateChange={handleDateChange}
           handleChange={handleChange}
           handleSave={handleSave}
         />

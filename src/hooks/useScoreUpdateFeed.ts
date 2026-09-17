@@ -47,6 +47,11 @@ export interface ScoreUpdate {
   awayWickets?: number;
   updatedAtUtc?: string;
   scorecards?: Scorecard[]; // <-- Added this
+  partnerShip?: {
+    runs: number;
+    balls: number;
+  };
+  recentOvsStats?: string;
 }
 
 // Shape received from backend SignalR
@@ -61,6 +66,11 @@ interface BackendScoreUpdate {
   awayWickets?: number;
   updatedAtUtc?: string;
   scorecards?: Scorecard[]; // <-- Added this
+  partnerShip?: {
+    runs: number;
+    balls: number;
+  };
+  recentOvsStats?: string;
 }
 
 const SCORE_EVENT = "ScoreUpdated";
@@ -106,6 +116,8 @@ function ensureSharedConnection() {
       awayOvers: getUpdateValue<string>(update, "awayOvers", "AwayOvers"),
       updatedAtUtc: getUpdateValue<string>(update, "updatedAtUtc", "UpdatedAtUtc"),
       scorecards: getUpdateValue<Scorecard[]>(update, "scorecards", "Scorecards"),
+      partnerShip: getUpdateValue<ScoreUpdate["partnerShip"]>(update, "partnerShip", "PartnerShip"),
+      recentOvsStats: getUpdateValue<string>(update, "recentOvsStats", "RecentOvsStats"),
     };
 
     sharedScoreByMatch = {

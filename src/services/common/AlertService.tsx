@@ -79,7 +79,7 @@ export const showInfo = async (
 export const showConfirm = async (
   title: string,
   text?: string
-) => {
+): Promise<boolean> => {
   const result =  await Swal.fire({
     title,
     text,
@@ -94,7 +94,7 @@ export const showConfirm = async (
       popup: "swal-popup",
     },
   });
-  return result;
+  return result.isConfirmed;
 };
 
 export default Alert;

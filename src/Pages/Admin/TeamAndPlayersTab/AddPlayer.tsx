@@ -241,26 +241,27 @@ useEffect(() => {
                 {player ? "Add" : "Edit"} players to a team. Players inherit the team's sport.
             </p>
 
-            <div className="form-group">
-                <label>TEAM</label>
+            {!player && (
+                <div className="form-group">
+                    <label>TEAM</label>
 
-                <select
-                    value={selectedTeam}
-                    onChange={handleTeamChange}
-                     disabled={player !== null}
-                >
-                    <option value="">Select Team</option>
+                    <select
+                        value={selectedTeam}
+                        onChange={handleTeamChange}
+                    >
+                        <option value="">Select Team</option>
 
-                    {teams.map(team => (
-                        <option
-                            key={team.id}
-                            value={team.id}
-                        >
-                            {team.sportName} - {team.teamName}
-                        </option>
-                    ))}
-                </select>
-            </div>
+                        {teams.map(team => (
+                            <option
+                                key={team.id}
+                                value={team.id}
+                            >
+                                {team.sportName} - {team.teamName}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             <div className="player-row">
 

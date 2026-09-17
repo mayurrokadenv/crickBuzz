@@ -6,6 +6,7 @@ import { getTeams, type Team } from "../../services/TeamService";
 import { sportService, type Sport } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
 import { getSeries as fetchSeries } from "../../services/SeriesService";
+import { useFixtureFeed } from "../../hooks/useFixtureFeed";
 
 // Define Series interface based on your API response
 interface Series {
@@ -33,6 +34,9 @@ interface FixtureFormProps {
 }
 
 function FixtureForm({ onSaved }: FixtureFormProps) {
+
+    const { fixturesById, createdFixtures, updatedFixtures, connectionState } = useFixtureFeed();
+
     const [sports, setSports] = useState<Sport[]>([]);
     const [series, setSeries] = useState<Series[]>([]); // Added series state
     const [loading, setLoading] = useState(true);
@@ -40,6 +44,11 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
 
     const now = new Date();
     const minDateTime = now.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
+
+    console.log("FixtureForm: fixturesById:", fixturesById);
+    console.log("FixtureForm: createdFixtures:", createdFixtures);
+    console.log("FixtureForm: updatedFixtures:", updatedFixtures);
+    console.log("FixtureForm: connectionState:", connectionState);
 
     const [fixture, setFixture] = useState<Fixture>({
         sport: "",
@@ -160,22 +169,48 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Validate totalOvers only for cricket
-        if (isCricket) {
-            if (!fixture.totalOvers) {
-                showError("Error", "Please enter total overs");
-                return;
-            }
-            if (isNaN(Number(fixture.totalOvers)) || Number(fixture.totalOvers) <= 0) {
-                showError("Error", "Please enter a valid number of overs (greater than 0)");
-                return;
-            }
+        if (!fixture.home) {
+            showError("Validation Error", "Please select the home team.");
+            return;
+        }
+
+        if (!fixture.away) {
+            showError("Validation Error", "Please select the away team.");
+            return;
+        }
+
+        if (fixture.home === fixture.away) {
+            showError("Validation Error", "Please select two different teams.");
+            return;
+        }
+
+        if (!fixture.scheduledAtUtc) {
+            showError("Validation Error", "Please select a scheduled date and time.");
+            return;
         }
 
         const scheduledDate = new Date(fixture.scheduledAtUtc);
-        if (scheduledDate < now) {
-            showError("Error", "Scheduled date and time cannot be in the past.");
+        if (Number.isNaN(scheduledDate.getTime())) {
+            showError("Validation Error", "Please select a valid scheduled date and time.");
             return;
+        }
+
+        if (scheduledDate < new Date()) {
+            showError("Validation Error", "Scheduled date and time cannot be in the past.");
+            return;
+        }
+
+        // Validate total overs only for cricket.
+        if (isCricket) {
+            if (!fixture.totalOvers.trim()) {
+                showError("Validation Error", "Please enter total overs.");
+                return;
+            }
+
+            if (!Number.isInteger(Number(fixture.totalOvers)) || Number(fixture.totalOvers) <= 0) {
+                showError("Validation Error", "Please enter a valid whole number of overs greater than 0.");
+                return;
+            }
         }
 
         const payload: any = {
@@ -234,7 +269,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                 Match two NVian teams against each other. Both must play the same sport.
             </p>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
                 <div className="form-group">
                     <label htmlFor="sport">Sport</label>
                     <select
@@ -322,7 +357,6 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                             placeholder="Enter total overs"
                             min="1"
                             step="1"
-                            required
                         />
                     </div>
                 )}
@@ -336,19 +370,12 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                         value={fixture.scheduledAtUtc}
                         onChange={handleChange}
                         min={minDateTime}
-                        required
                     />
                 </div>
 
                 <button
                     type="submit"
                     className="submit-button"
-                    disabled={
-                        !fixture.home ||
-                        !fixture.away ||
-                        !fixture.scheduledAtUtc ||
-                        (isCricket && !fixture.totalOvers)
-                    }
                 >
                     + Schedule Fixture
                 </button>

@@ -9,6 +9,7 @@ import {
 import { fixtureService } from "../../services/fixturesservice";
 import "./AddCommentary.css";
 import { showError, showSuccess } from "../../services/common/AlertService";
+import Loader from "../Loader/Loader";
 
 // Add phase and scorecards to FeedingMatchs interface
 interface ExtendedFeedingMatchs extends FeedingMatchs {
@@ -256,6 +257,8 @@ function AddCommentary({
   const [overs, setOvers] = useState<Record<string, string>>({});
   const [totalOversLimit, setTotalOversLimit] = useState<number | null>(null);
   const [isPosting, setIsPosting] = useState<boolean>(false);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [isUpdatingFixture, setIsUpdatingFixture] = useState<boolean>(false);
   const [postStatus, setPostStatus] = useState<"idle" | "success" | "error">("idle");
   const [selectedExtraRuns, setSelectedExtraRuns] = useState<number>(0);
   const [bowlerOvers, setBowlerOvers] = useState<Record<string, string>>({});
@@ -556,6 +559,7 @@ function AddCommentary({
   };
 
   const getFixtures = async () => {
+    setIsLoadingData(true);
     try {
       const res = await liveFixtures();
       setLiveFixturesList(res);
@@ -568,6 +572,8 @@ function AddCommentary({
       }
     } catch (e) {
       console.error("AddCommentary: Error fetching live fixtures:", e);
+    } finally {
+      setIsLoadingData(false);
     }
   };
 
@@ -619,8 +625,16 @@ function AddCommentary({
   };
 
   useEffect(() => {
-    fetchTeams();
-    getFixtures();
+    const loadInitialData = async () => {
+      setIsLoadingData(true);
+      try {
+        await Promise.all([fetchTeams(), getFixtures()]);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    void loadInitialData();
   }, []);
 
   useEffect(() => {
@@ -899,6 +913,7 @@ function AddCommentary({
     if (!otherTeam) return;
 
     (async () => {
+      setIsUpdatingFixture(true);
       try {
         await fixtureService.updateFixture(
           selectedFixtureId,
@@ -920,6 +935,8 @@ function AddCommentary({
         console.error("Auto innings switch failed:", err);
         autoInningsSwitchRef.current = null; // allow retry
         showError("Error", "Failed to switch innings automatically.");
+      } finally {
+        setIsUpdatingFixture(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -948,6 +965,7 @@ function AddCommentary({
     autoCompleteMatchRef.current = selectedFixtureId;
 
     (async () => {
+      setIsUpdatingFixture(true);
       try {
         await fixtureService.updateFixture(
           selectedFixtureId,
@@ -966,6 +984,8 @@ function AddCommentary({
         console.error("Auto match completion failed:", err);
         autoCompleteMatchRef.current = null; // allow retry
         showError("Error", "Failed to mark match as completed.");
+      } finally {
+        setIsUpdatingFixture(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1256,7 +1276,25 @@ function AddCommentary({
   const battingRestricted = !!battingTeamId;
 
   return (
-    <div className="add-commentary-container">
+    <div
+      className="add-commentary-container"
+      aria-busy={isPosting}
+    >
+      {isPosting && (
+        <div className="commentary-post-overlay" role="status" aria-live="polite">
+          <Loader size="large" label="Posting commentary..." />
+        </div>
+      )}
+
+      {(isLoadingData || isUpdatingFixture) && (
+        <div className="add-commentary-loader">
+          <Loader
+            size="small"
+            label={isUpdatingFixture ? "Updating match..." : "Loading match data..."}
+          />
+        </div>
+      )}
+
       {winnerInfo?.isMatchOver && (
         <div
           style={{
@@ -1717,7 +1755,9 @@ function AddCommentary({
             ) : inningsOver ? (
               "Overs Completed"
             ) : isPosting ? (
-              "Processing..."
+              <>
+                <Loader size="small" label="Processing..." />
+              </>
             ) : postStatus === "success" ? (
               "✅ Posted!"
             ) : postStatus === "error" ? (

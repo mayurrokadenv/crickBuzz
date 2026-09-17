@@ -14,11 +14,9 @@ type MatchSummaryProps = {
 function MatchSummary({ header, live }: MatchSummaryProps) {
   const fixtureId = header.matchId || "";
   const { scoreByMatch } = useScoreUpdateFeed(String(fixtureId));
-
-  console.log("MatchSummary: Score updates in MatchSummary:====================>", scoreByMatch);
-  const realtime = fixtureId ? scoreByMatch[String(fixtureId)] : undefined;
-
-  console.log("MatchSummary: Realtime score for fixtureId in MatchSummary==============>", fixtureId, ":", realtime);
+  const realtime = fixtureId
+    ? scoreByMatch[String(fixtureId)] ?? scoreByMatch[String(fixtureId).toLowerCase()]
+    : undefined;
 
   const innings = live.matchScoreDetails.inningsScoreList;
 

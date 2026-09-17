@@ -154,6 +154,8 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
 
   // b) Fallback: match by the team currently batting
   if (!currentInnings && topBattingTeamId) {
+  const partnership = liveAny.partnerShip ? `${liveAny.partnerShip.runs} runs (${liveAny.partnerShip.balls} balls)` : null;
+  const recentOvers = liveAny.recentOvsStats ? liveAny.recentOvsStats : null;
     currentInnings =
       scorecardsArray.find((inn) => inn?.battingTeamId === topBattingTeamId) ?? null;
   }
@@ -282,6 +284,24 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
     ? mapBowlingFigure(currentBowlerSource)
     : null;
 
+  const currentPartnership = firstDefined(
+    realtime?.partnerShip,
+    liveAny?.partnerShip,
+  ) ?? (battingFigures.length > 0
+    ? {
+        runs: battingFigures
+          .filter((figure: any) => figure.out !== true)
+          .reduce((total: number, figure: any) => total + (figure.runs ?? 0), 0),
+        balls: battingFigures
+          .filter((figure: any) => figure.out !== true)
+          .reduce((total: number, figure: any) => total + (figure.balls ?? 0), 0),
+      }
+    : null);
+  const partnership = currentPartnership
+    ? `${currentPartnership.runs} runs (${currentPartnership.balls} balls)`
+    : null;
+  const recentOvers = realtime?.recentOvsStats ?? liveAny?.recentOvsStats ?? null;
+
   /* ------------------------------------------------------------------ */
   /* 8. Last wicket (batting side only)                                  */
   /* ------------------------------------------------------------------ */
@@ -403,6 +423,20 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
           <strong>
             {liveAny.partnerShip.runs} runs ({liveAny.partnerShip.balls} balls)
           </strong>
+        </div>
+      )}
+
+      {partnership && (
+        <div className="live-match-details__info-row">
+          <span>Partnership</span>
+          <strong>{partnership}</strong>
+        </div>
+      )}
+
+      {recentOvers && (
+        <div className="live-match-details__recent">
+          <h3>Recent Overs</h3>
+          <p>{recentOvers}</p>
         </div>
       )}
 
