@@ -976,7 +976,7 @@ function AddCommentary({
           winningTeamId,
         );
 
-        showSuccess("Match Completed", winnerInfo.text);
+        showSuccess(`Match completed. View full details on the Nvian Dashboard — ${winnerInfo.text}`);
 
         await getFixtures();
         window.dispatchEvent(new CustomEvent("crickbuzz-live-feeds-refresh"));
