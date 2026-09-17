@@ -14,6 +14,7 @@ interface Sport {
 interface Team {
     id: string;
     teamName: string;
+    sportId: string;
 }
 
 interface SeriesTeam {
@@ -105,6 +106,8 @@ function Series() {
         );
     };
 
+    const filteredTeams = teams.filter((team) => team.sportId === sportId);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -175,7 +178,10 @@ function Series() {
                         <label>SPORT *</label>
                         <select
                             value={sportId}
-                            onChange={(e) => setSportId(e.target.value)}
+                            onChange={(e) => {
+                                setSportId(e.target.value);
+                                setSelectedTeamIds([]);
+                            }}
                             disabled={isSubmitting || isLoading}
                         >
                             <option value="">-- Select a Sport --</option>
@@ -190,7 +196,7 @@ function Series() {
                     <div>
                         <label>SELECT TEAMS * (Minimum 2)</label>
                         <div className="teams-row">
-                            {teams.map((team) => {
+                            {filteredTeams.map((team) => {
                                 const isSelected = selectedTeamIds.includes(team.id);
                                 return (
                                     <button
