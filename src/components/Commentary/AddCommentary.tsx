@@ -114,6 +114,58 @@ function normalizeScorecards(raw: any): any[] {
 
 const MAX_WICKETS = 10; // fallback only
 
+/* ============================================================
+   ⭐ CREASE PERSISTENCE
+   Stores, per fixture + per batting team:
+     - onPitch   : the (max 2) batsmen currently at the crease
+     - dismissed : batsmen we know are out locally (so a lagging
+                   backend scorecard can never re-open them)
+   Keyed by fixture + team so 2nd innings starts with a clean slate.
+   ============================================================ */
+interface CreaseRecord {
+  onPitch: string[];
+  dismissed: string[];
+}
+
+const creaseStorageKey = (fixtureId: string, teamId: string) =>
+  `crease:${fixtureId}:${teamId}`;
+
+const readCrease = (fixtureId: string | null, teamId: string | null): CreaseRecord => {
+  const empty: CreaseRecord = { onPitch: [], dismissed: [] };
+  if (!fixtureId || !teamId) return empty;
+  try {
+    const raw = localStorage.getItem(creaseStorageKey(fixtureId, teamId));
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw);
+    const clean = (v: any) =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && !!x) : [];
+    return { onPitch: clean(parsed?.onPitch), dismissed: clean(parsed?.dismissed) };
+  } catch {
+    return empty;
+  }
+};
+
+const writeCrease = (
+  fixtureId: string | null,
+  teamId: string | null,
+  record: CreaseRecord
+) => {
+  if (!fixtureId || !teamId) return;
+  try {
+    const key = creaseStorageKey(fixtureId, teamId);
+    if (record.onPitch.length === 0 && record.dismissed.length === 0) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, JSON.stringify(record));
+    }
+  } catch {
+    /* ignore quota / private-mode errors */
+  }
+};
+
+const sameIds = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((v, i) => v === b[i]);
+
 interface WinnerResult {
   isMatchOver: boolean;
   winningTeamId: string | null;
@@ -209,6 +261,10 @@ function AddCommentary({
   const [bowlerOvers, setBowlerOvers] = useState<Record<string, string>>({});
   const prevMatchIdRef = useRef<string | null>(null);
 
+  // ⭐ The two batsmen currently at the crease (max 2).
+  // Everything else in the lineup is locked until one of them is out.
+  const [onPitchBatterIds, setOnPitchBatterIds] = useState<string[]>([]);
+
   const [winnerInfo, setWinnerInfo] = useState<{ isMatchOver: boolean; text: string } | null>(null);
   const [winningTeamId, setWinningTeamId] = useState<string | null>(null);
   const [battingTeamId, setBattingTeamId] = useState<string | null>(null);
@@ -286,6 +342,13 @@ function AddCommentary({
     return normalizeScorecards(selectedMatch?.scorecards);
   })();
 
+  // Team object for whichever side is currently selected in the UI.
+  // (Also used as the batting side for crease bookkeeping.)
+  const battingTeamObj =
+    matchTeams.find(
+      (t) => t.teamName.toLowerCase() === selectedTeamName.toLowerCase()
+    ) || null;
+
   // ============================================================
   // ⭐ NEW: BOWLER RESTRICTION HELPERS
   // ============================================================
@@ -331,7 +394,7 @@ function AddCommentary({
   // ============================================================
 
   // ============================================================
-  // ⭐ NEW: HELPERS FOR CURRENT BATSMEN HIGHLIGHT
+  // ⭐ HELPERS FOR CURRENT BATSMEN (derived from the scorecard)
   // ============================================================
   const getCurrentBatsmenIds = (teamId: string): Set<string> => {
     const currentIds = new Set<string>();
@@ -378,7 +441,109 @@ function AddCommentary({
     );
     if (!team) return [];
     const outIds = getOutPlayerIdsForTeam(team.id);
-    return team.players.filter((p) => !outIds.has(p.playerId));
+    const locallyOut = selectedFixtureId
+      ? readCrease(selectedFixtureId, team.id).dismissed
+      : [];
+    return team.players.filter(
+      (p) => !outIds.has(p.playerId) && !locallyOut.includes(p.playerId)
+    );
+  };
+
+  // ============================================================
+  // ⭐ CREASE RECONCILIATION
+  // onPitchBatterIds is authoritative for what the dropdown allows.
+  // It is rebuilt from (in priority order):
+  //   1. what we already stored locally (survives refresh & backend lag)
+  //   2. the backend scorecard, but only when it unambiguously shows
+  //      at most 2 not-out batsmen (guards against backends that list
+  //      the whole lineup with out = false)
+  // Anyone the backend marks out — or that we locally dismissed —
+  // is stripped out, which re-opens a slot for the next batsman.
+  // ============================================================
+  useEffect(() => {
+    if (isFootball) {
+      setOnPitchBatterIds((prev) => (prev.length ? [] : prev));
+      return;
+    }
+
+    const teamId = battingTeamObj?.id || null;
+    if (!selectedFixtureId || !teamId) {
+      setOnPitchBatterIds((prev) => (prev.length ? [] : prev));
+      return;
+    }
+
+    const cardOutIds = getOutPlayerIdsForTeam(teamId);
+    const stored = readCrease(selectedFixtureId, teamId);
+
+    // Anyone locally dismissed OR server-confirmed out is off the crease.
+    const dismissed = new Set<string>([...stored.dismissed, ...cardOutIds]);
+
+    const validOnPitch = stored.onPitch.filter((id) => !dismissed.has(id));
+    const cardNonOut = [...getCurrentBatsmenIds(teamId)].filter(
+      (id) => !dismissed.has(id)
+    );
+
+    let next: string[];
+    if (validOnPitch.length > 0) {
+      // Local truth first — never let a stale scorecard re-open a locked slot.
+      next = validOnPitch.slice(0, 2);
+    } else if (cardNonOut.length > 0 && cardNonOut.length <= 2) {
+      // Fresh browser / cleared storage: seed from the scorecard.
+      next = cardNonOut.slice(0, 2);
+    } else {
+      next = [];
+    }
+
+    // Keep local dismissals around until the backend confirms them,
+    // so a lagging scorecard can't resurrect a dismissed batsman.
+    const pendingDismissed = stored.dismissed.filter((id) => !cardOutIds.has(id));
+
+    if (!sameIds(next, stored.onPitch) || !sameIds(pendingDismissed, stored.dismissed)) {
+      writeCrease(selectedFixtureId, teamId, {
+        onPitch: next,
+        dismissed: pendingDismissed,
+      });
+    }
+    setOnPitchBatterIds((prev) => (sameIds(prev, next) ? prev : next));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isFootball,
+    selectedFixtureId,
+    battingTeamObj?.id,
+    effectiveScorecards,
+    matchTeams,
+  ]);
+
+  /**
+   * A batter may only be picked if they are already at the crease,
+   * or if a crease slot is still free (start of innings / after a wicket).
+   * Once 2 batsmen are locked in, the rest of the lineup is disabled.
+   */
+  const isBatterSelectable = (playerId: string): boolean => {
+    if (isFootball) return true;
+    if (onPitchBatterIds.includes(playerId)) return true;
+    return onPitchBatterIds.length < 2;
+  };
+
+  const creaseIsFull = !isFootball && onPitchBatterIds.length >= 2;
+
+  /** Selecting a new batsman claims a free crease slot and persists it. */
+  const handleBatterChange = (playerId: string) => {
+    setSelectedBatterId(playerId);
+    if (playerId) localStorage.setItem("selectedBatterId", playerId);
+
+    if (isFootball || !playerId) return;
+    if (onPitchBatterIds.includes(playerId)) return;
+    if (onPitchBatterIds.length >= 2) return;
+
+    const teamId = battingTeamObj?.id ?? null;
+    const next = [...onPitchBatterIds, playerId];
+    setOnPitchBatterIds(next);
+
+    if (selectedFixtureId && teamId) {
+      const stored = readCrease(selectedFixtureId, teamId);
+      writeCrease(selectedFixtureId, teamId, { ...stored, onPitch: next });
+    }
   };
 
   const fetchTeams = async () => {
@@ -575,6 +740,8 @@ function AddCommentary({
 
   // ============================================================
   // ⭐ UPDATED: BATTER / BOWLER SELECTION WITH PERSISTENCE
+  // Batter auto-pick now prefers someone already at the crease and
+  // never selects a locked (non-crease) batsman when the crease is full.
   // ============================================================
   useEffect(() => {
     if (!selectedTeamName || matchTeams.length !== 2) {
@@ -588,11 +755,25 @@ function AddCommentary({
     );
 
     const eligibleBatters = getEligibleBatters(selectedTeamName);
-    const currentBatterIsValid =
-      selectedBatterId && eligibleBatters.some((player) => player.playerId === selectedBatterId);
+    const selectableBatters = eligibleBatters.filter((p) =>
+      isBatterSelectable(p.playerId)
+    );
+    // Safety valve: never strand the user with zero options.
+    const allowedBatters =
+      selectableBatters.length > 0 ? selectableBatters : eligibleBatters;
 
-    if (eligibleBatters.length > 0) {
-      const newBatterId = currentBatterIsValid ? selectedBatterId : eligibleBatters[0].playerId;
+    const currentBatterIsValid =
+      selectedBatterId && allowedBatters.some((player) => player.playerId === selectedBatterId);
+
+    if (allowedBatters.length > 0) {
+      const orderedForPick = [...allowedBatters].sort((a, b) => {
+        const aOnPitch = onPitchBatterIds.includes(a.playerId) ? 0 : 1;
+        const bOnPitch = onPitchBatterIds.includes(b.playerId) ? 0 : 1;
+        return aOnPitch - bOnPitch;
+      });
+      const newBatterId = currentBatterIsValid
+        ? selectedBatterId
+        : orderedForPick[0].playerId;
       setSelectedBatterId(newBatterId);
       localStorage.setItem("selectedBatterId", newBatterId);
     } else {
@@ -629,6 +810,7 @@ function AddCommentary({
     effectiveScorecards,
     liveFixturesList,
     overs,
+    onPitchBatterIds,
   ]);
 
   useEffect(() => {
@@ -885,6 +1067,15 @@ function AddCommentary({
       return;
     }
 
+    // ⭐ NEW: Guard against posting for a batsman who is not at the crease
+    if (!isFootball && !isBatterSelectable(selectedBatterId)) {
+      showError(
+        "Error",
+        "This batsman is not at the crease. Only the two current batsmen can be selected."
+      );
+      return;
+    }
+
     {
       const team = matchTeams.find(
         (t) => t.teamName.toLowerCase() === selectedTeamName.toLowerCase()
@@ -988,6 +1179,35 @@ function AddCommentary({
         });
       }
 
+      // ============================================================
+      // ⭐ NEW: a wicket frees exactly one crease slot.
+      // The dismissed batsman is removed from the crease list and marked
+      // dismissed locally so the dropdown unlocks ONE new batsman —
+      // and stays that way even if the scorecard update lags behind.
+      // ============================================================
+      if (!isFootball && selectedActionType === "wicket") {
+        const teamId = battingTeamObj?.id ?? null;
+
+        if (selectedFixtureId && teamId) {
+          const stored = readCrease(selectedFixtureId, teamId);
+          const nextOnPitch = stored.onPitch.filter((id) => id !== selectedBatterId);
+          const nextDismissed = Array.from(
+            new Set([...stored.dismissed, selectedBatterId])
+          );
+
+          writeCrease(selectedFixtureId, teamId, {
+            onPitch: nextOnPitch,
+            dismissed: nextDismissed,
+          });
+          setOnPitchBatterIds(nextOnPitch);
+        }
+
+        // Clear the striker so the user must pick the incoming batsman.
+        setSelectedBatterId("");
+        localStorage.removeItem("selectedBatterId");
+      }
+      // ============================================================
+
       if (onScoreUpdated && selectedMatch) {
         const updatedMatch: FeedingMatchs = {
           ...selectedMatch,
@@ -1034,10 +1254,6 @@ function AddCommentary({
   const showExtraRunsPicker = !isFootball && !!selectedActionType && EXTRA_RUNS_ELIGIBLE_ACTIONS.has(selectedActionType);
   const inningsOver = isInningsOverForTeam(selectedTeamName) || winnerInfo?.isMatchOver;
   const battingRestricted = !!battingTeamId;
-
-  // ⭐ NEW: Get IDs of current batsmen for highlighting
-  const selectedTeam = matchTeams.find(t => t.teamName.toLowerCase() === selectedTeamName.toLowerCase());
-  const currentBatsmenIds = selectedTeam ? getCurrentBatsmenIds(selectedTeam.id) : new Set<string>();
 
   return (
     <div className="add-commentary-container">
@@ -1279,14 +1495,17 @@ function AddCommentary({
                   (no eligible batters)
                 </span>
               )}
+              {/* ⭐ NEW: crease-lock indicator */}
+              {!isFootball && creaseIsFull && (
+                <span style={{ marginLeft: "8px", color: "#f59e0b", fontSize: "11px", fontWeight: 600 }}>
+                  🔒 {onPitchBatterIds.length} batsmen at the crease — rest unlock after a wicket
+                </span>
+              )}
             </label>
             <div className="player-selector">
               <select
                 value={selectedBatterId}
-                onChange={(e) => {
-                  setSelectedBatterId(e.target.value);
-                  localStorage.setItem("selectedBatterId", e.target.value);
-                }}
+                onChange={(e) => handleBatterChange(e.target.value)}
                 className="player-dropdown"
                 disabled={batterPlayers.length === 0 || !effectivelyLive || inningsOver || !isBattingTeamSelected}
               >
@@ -1294,10 +1513,18 @@ function AddCommentary({
                   <option value="">No batters available</option>
                 ) : (
                   batterPlayers.map((player) => {
-                    const isCurrentlyBatting = currentBatsmenIds.has(player.playerId);
+                    const atCrease = onPitchBatterIds.includes(player.playerId);
+                    const locked = !isBatterSelectable(player.playerId);
                     return (
-                      <option key={player.playerId} value={player.playerId}>
-                        {isCurrentlyBatting ? "🏏 " : ""}{player.playerName} ({player.role}){isCurrentlyBatting ? " - On Pitch" : ""}
+                      <option
+                        key={player.playerId}
+                        value={player.playerId}
+                        disabled={locked}
+                        title={locked ? "Not at the crease — locked until a wicket falls" : undefined}
+                      >
+                        {atCrease ? "🏏 " : ""}
+                        {player.playerName} ({player.role})
+                        {atCrease ? " - On Pitch" : locked ? " — 🔒 locked" : ""}
                       </option>
                     );
                   })
