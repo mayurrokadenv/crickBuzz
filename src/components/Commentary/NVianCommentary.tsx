@@ -20,9 +20,11 @@ function NVianCommentary({ fixtureId, title }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const { commentaryByMatch } = useCommentaryFeed(fixtureId ?? "");
+  const { commentaryByMatch, connectionState } = useCommentaryFeed(fixtureId ?? "");
 
-  const liveComment = fixtureId ? commentaryByMatch[fixtureId] : undefined;
+  const liveComment = fixtureId
+    ? commentaryByMatch[fixtureId] ?? commentaryByMatch[fixtureId.toLowerCase()]
+    : undefined;
   useEffect(() => {
     let cancelled = false;
 
@@ -58,7 +60,7 @@ function NVianCommentary({ fixtureId, title }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [fixtureId]);
+  }, [fixtureId, connectionState]);
 
   // Load initial commentary from API
 
