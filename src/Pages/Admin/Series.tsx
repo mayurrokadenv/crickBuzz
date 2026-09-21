@@ -222,7 +222,11 @@ function Series() {
                         className="submit-btn"
                         disabled={isSubmitting || isLoading}
                     >
-                        {isSubmitting ? "Creating Series..." : "+ Create Series"}
+                        {isSubmitting ? (
+                            <Loader label="Creating Series..." size="small" />
+                        ) : (
+                            "+ Create Series"
+                        )}
                     </button>
                 </form>
             </div>

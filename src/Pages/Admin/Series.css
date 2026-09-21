@@ -159,6 +159,15 @@
     transition: all 0.2s ease;
 }
 
+.fixture-form1 .submit-btn .app-loader {
+    color: inherit;
+    min-height: 0;
+}
+
+.fixture-form1 .submit-btn .app-loader__label {
+    font-size: 14px;
+}
+
 .fixture-form1 .submit-btn:hover {
     background: #ffffff;
 }
