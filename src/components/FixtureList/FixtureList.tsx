@@ -103,16 +103,16 @@ function FixtureListItem({
               {fixture.sport?.toLowerCase() ===
               "football".toLowerCase().slice() ? (
                 <>
-                  <option value={0}>First Half</option>
-                  <option value={1}>Second Half</option>
-                  <option value={2}>Extra Time</option>
-                  <option value={3}>Penalty Shootout</option>
+                  <option value={2}>First Half</option>
+                  <option value={3}>Second Half</option>
+                  <option value={4}>Extra Time</option>
+                  <option value={5}>Penalty Shootout</option>
                 </>
               ) : fixture.sport?.toLowerCase() === "hockey" ? (
                 <>
-                  <option value={0}>First Half</option>
-                  <option value={1}>Second Half</option>
-                  <option value={2}>Shootout</option>
+                  <option value={2}>First Half</option>
+                  <option value={3}>Second Half</option>
+                  <option value={5}>Shootout</option>
                 </>
               ) : (
                 <>
