@@ -2,7 +2,7 @@ import "./LiveMatchDetails.css";
 
 import React from "react";
 import type { MatchLiveModel } from "../types/MatchDetailsModel";
-import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 
 type LiveMatchDetailsProps = {
   live: MatchLiveModel;
@@ -19,6 +19,29 @@ const PHASE_LABEL: Record<string, string> = {
   FirstInnings: "1st Innings",
   SecondInnings: "2nd Innings",
 };
+
+/** Ball-event action -> short display symbol for the "recent overs" strip. */
+const RUN_EVENT_DISPLAY: Record<string, string> = {
+  Dot: "0",
+  Single: "1",
+  Double: "2",
+  Triple: "3",
+  Four: "4",
+  Six: "6",
+  Wicket: "W",
+  Wide: "Wd",
+  NoBall: "Nb",
+  Bye: "B",
+  LegBye: "Lb",
+};
+
+function commentaryEventToDisplay(event: any): string {
+  if (!event) return "";
+  if (RUN_EVENT_DISPLAY[event.action]) return RUN_EVENT_DISPLAY[event.action];
+  // fallback: pull a digit out of the note text, else first letter of the action
+  const match = String(event.note ?? "").match(/\d+/);
+  return match ? match[0] : (event.action ?? "").charAt(0).toUpperCase();
+}
 
 type MappedBatter = {
   id: string;
@@ -94,7 +117,10 @@ function mapBowlingFigure(player: any): MappedBowler {
 
 function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
   const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
-  const realtime = (fixtureId ? scoreByMatch[fixtureId] : undefined) as any;
+  const realtime = (fixtureId ? getScoreForFixture(scoreByMatch, fixtureId) : undefined) as any;
+
+  console.log("LiveMatchDetails: Score updates in LiveMatchDetails:====================>", scoreByMatch);
+  console.log("LiveMatchDetails: Realtime score for fixtureId in LiveMatchDetails==============>", fixtureId, ":", realtime);
   const liveAny = live as any;
 
   /* ------------------------------------------------------------------ */
@@ -103,9 +129,25 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
   const realtimeScorecards = realtime?.scorecards ?? null;
   const liveScorecards = liveAny?.scorecards ?? null;
 
+  const normalizeScorecards = (scorecards: any): Record<string, any> => {
+    if (Array.isArray(scorecards)) {
+      return scorecards.reduce((byInnings, innings) => {
+        if (innings?.inningsNo) {
+          byInnings[`innings${innings.inningsNo}`] = innings;
+        }
+        return byInnings;
+      }, {} as Record<string, any>);
+    }
+
+    return scorecards ?? {};
+  };
+
+  const normalizedRealtimeScorecards = normalizeScorecards(realtimeScorecards);
+  const normalizedLiveScorecards = normalizeScorecards(liveScorecards);
+
   const scorecardsObj = {
-    innings1: realtimeScorecards?.innings1 ?? liveScorecards?.innings1 ?? null,
-    innings2: realtimeScorecards?.innings2 ?? liveScorecards?.innings2 ?? null,
+    innings1: normalizedRealtimeScorecards.innings1 ?? normalizedLiveScorecards.innings1 ?? null,
+    innings2: normalizedRealtimeScorecards.innings2 ?? normalizedLiveScorecards.innings2 ?? null,
   };
 
   /* ------------------------------------------------------------------ */
@@ -217,6 +259,13 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
     requiredRunRate && requiredRunRate > 0 ? requiredRunRate.toFixed(2) : null;
 
   /* ------------------------------------------------------------------ */
+  /* Commentary + batting side — needed by recent overs, batting crease  */
+  /* and last wicket, so this is declared once, up front.                */
+  /* ------------------------------------------------------------------ */
+  const commentary: any[] = liveAny?.commentary ?? realtime?.commentary ?? [];
+  const battingSide = isHomeBatting ? "Home" : "Away";
+
+  /* ------------------------------------------------------------------ */
   /* 6. Batting figures -> ONLY the 2 batsmen at the crease              */
   /* ------------------------------------------------------------------ */
   const battingFigures: any[] = currentInnings?.battingFigures ?? [];
@@ -225,9 +274,20 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
     new Map(battingFigures.map((f: any) => [f.playerId ?? f.id, f])).values(),
   ) as any[];
 
+  // Some backends never send an explicit `out` flag on battingFigures.
+  // Fall back to inferring dismissals from the Wicket commentary events.
+  const wicketPlayerIdsFromCommentary = new Set(
+    commentary
+      .filter((c: any) => c?.action === "Wicket" && c?.side === battingSide)
+      .map((c: any) => c.playerId),
+  );
+
   const outPlayerIds = new Set(
     uniqueBattingFigures
-      .filter((f: any) => f.out === true)
+      .filter(
+        (f: any) =>
+          f.out === true || wicketPlayerIdsFromCommentary.has(f.playerId ?? f.id),
+      )
       .map((f: any) => f.playerId ?? f.id),
   );
 
@@ -250,10 +310,12 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
       : null;
 
   const scorecardCrease = uniqueBattingFigures
-    .filter((f: any) => f.out !== true)
+    .filter((f: any) => !outPlayerIds.has(f.playerId ?? f.id))
     .map(mapBattingFigure);
 
-  const orderedCandidates = [liveStriker, liveNonStriker, ...scorecardCrease].filter(
+  // Fresh scorecard data (from realtime) takes priority over the stale
+  // `live` snapshot's striker/non-striker, which only fill gaps.
+  const orderedCandidates = [...scorecardCrease, liveStriker, liveNonStriker].filter(
     (b): b is MappedBatter => !!b && !!b.id && !outPlayerIds.has(b.id),
   );
 
@@ -300,26 +362,50 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
     : null;
 
   /* ------------------------------------------------------------------ */
-  /* Partnership + recent overs                                          */
+  /* Partnership — computed from fresh battingFigures, live field is     */
+  /* only a last-resort fallback (it never updates over SignalR).        */
   /* ------------------------------------------------------------------ */
-  const currentPartnership =
-    firstDefined(realtime?.partnerShip, liveAny?.partnerShip) ??
-    (battingFigures.length > 0
+  const computedPartnership =
+    battingFigures.length > 0
       ? {
           runs: battingFigures
-            .filter((figure: any) => figure.out !== true)
-            .reduce((total: number, figure: any) => total + (figure.runs ?? 0), 0),
+            .filter((f: any) => !outPlayerIds.has(f.playerId ?? f.id))
+            .reduce((t: number, f: any) => t + (f.runs ?? 0), 0),
           balls: battingFigures
-            .filter((figure: any) => figure.out !== true)
-            .reduce((total: number, figure: any) => total + (figure.balls ?? 0), 0),
+            .filter((f: any) => !outPlayerIds.has(f.playerId ?? f.id))
+            .reduce((t: number, f: any) => t + (f.balls ?? 0), 0),
         }
-      : null);
+      : null;
 
-  const partnership = currentPartnership
-    ? `${currentPartnership.runs} runs (${currentPartnership.balls} balls)`
-    : null;
+  const currentPartnership =
+    computedPartnership ?? firstDefined(realtime?.partnerShip, liveAny?.partnerShip);
+
+  /* ------------------------------------------------------------------ */
+  /* Recent overs — computed client-side from commentary (fresh data),   */
+  /* since the backend does not send recentOvsStats over SignalR.        */
+  /* ------------------------------------------------------------------ */
+  const battingSideCommentary = commentary.filter((c: any) => c?.side === battingSide);
+
+  const latestBall = [...battingSideCommentary].sort(
+    (a: any, b: any) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime(),
+  )[0];
+
+  const latestOverNo = latestBall ? Math.floor(Number(latestBall.ball)) : null;
+
+  const currentOverEvents =
+    latestOverNo !== null
+      ? battingSideCommentary
+          .filter((c: any) => Math.floor(Number(c.ball)) === latestOverNo)
+          .sort((a: any, b: any) => Number(a.ball) - Number(b.ball))
+      : [];
+
+  const computedRecentOvers =
+    currentOverEvents.length > 0
+      ? currentOverEvents.map(commentaryEventToDisplay).join(" ")
+      : null;
 
   const recentOvers = firstDefined<string>(
+    computedRecentOvers,
     realtime?.recentOvsStats,
     liveAny?.recentOvsStats,
   );
@@ -327,9 +413,6 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
   /* ------------------------------------------------------------------ */
   /* 8. Last wicket (batting side only)                                  */
   /* ------------------------------------------------------------------ */
-  const commentary: any[] = liveAny?.commentary ?? realtime?.commentary ?? [];
-  const battingSide = isHomeBatting ? "Home" : "Away";
-
   const lastWicketEvent = commentary
     .filter((c: any) => c?.action === "Wicket" && c?.side === battingSide)
     .sort(
@@ -338,7 +421,7 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
     )[0];
 
   const scorecardLastOut = uniqueBattingFigures
-    .filter((f: any) => f.out === true)
+    .filter((f: any) => outPlayerIds.has(f.playerId ?? f.id))
     .pop();
 
   const lastWicketDisplay = lastWicketEvent
@@ -445,19 +528,21 @@ function LiveMatchDetails({ live, fixtureId }: LiveMatchDetailsProps) {
         </div>
       )}
 
-      {partnership && (
+      {currentPartnership && (
         <div className="live-match-details__info-row">
           <span>Partnership</span>
-          <strong>{partnership}</strong>
+          <strong>
+            {currentPartnership.runs} runs ({currentPartnership.balls} balls)
+          </strong>
         </div>
       )}
 
-      {recentOvers && (
+      {/* {recentOvers && (
         <div className="live-match-details__recent">
           <h3>Recent Overs</h3>
           <p>{recentOvers}</p>
         </div>
-      )}
+      )} */}
 
       {lastWicketDisplay && (
         <div className="live-match-details__info-row">

@@ -1,7 +1,7 @@
 import "./MatchGrid.css";
 import type { MatchCardModel } from "../types/MatchCardModel";
 import { useLocation, useNavigate } from "react-router-dom";
-import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 
 type MatchCardProps = {
   match: MatchCardModel;
@@ -15,7 +15,7 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
   console.log("MatchCard: Fixture ID for match in MatchCard====================>", fixtureId);
   const { scoreByMatch } = useScoreUpdateFeed(fixtureId ?? "");
 
-  const realtime = fixtureId ? scoreByMatch[fixtureId] : undefined;
+  const realtime = fixtureId ? getScoreForFixture(scoreByMatch, fixtureId) : undefined;
   console.log("MatchCard: Realtime score for fixtureId in MatchCard==============>", fixtureId, ":", realtime);
   console.log("MatchCard: Score updates in MatchCard:====================>", scoreByMatch);
 
@@ -39,13 +39,22 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
 
   const homeOvers = realtime?.homeOvers ?? match.homeOvers ?? null;
   const awayOvers = realtime?.awayOvers ?? match.awayOvers ?? null;
-  const currentOvers = awayOvers ?? homeOvers;
-
-        // console.log("Match status===========================:", match.status);
+  const currentInningsNo = realtime?.phase?.toLowerCase().includes("second")
+    ? 2
+    : 1;
+  const currentInnings = Array.isArray(realtime?.scorecards)
+    ? realtime.scorecards.find((innings) => innings.inningsNo === currentInningsNo)
+    : realtime?.scorecards?.[`innings${currentInningsNo}`];
+  const battingTeamId = realtime?.battingTeamId ?? currentInnings?.battingTeamId;
+  const isHomeBatting = battingTeamId
+    ? battingTeamId === realtime?.homeTeamId
+    : homeOvers !== "0.0" || awayOvers === "0.0";
+  const currentOvers = isHomeBatting ? homeOvers : awayOvers;
+  const activeStatus = realtime?.status ?? match.status;
 
         const isLive =
-          match.status === "Live" ||
-          match.status === "In Progress";
+          activeStatus === "Live" ||
+          activeStatus === "In Progress";
 
   return (
     <article
@@ -68,16 +77,16 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
             className={`match-card__status ${
                 isLive
                     ? "match-card__status--live"
-                    : match.status === "Preview"
+                    : activeStatus === "Preview"
                         ? "match-card__status--preview"
-                        : match.status === "Complete"
+                      : activeStatus === "Complete"
                             ? "match-card__status--complete"
                             : ""
             }`}
         >
             {isLive && <span className="match-card__live-dot" />}
 
-            {isLive ? "LIVE" : match.status}
+            {isLive ? "LIVE" : activeStatus}
         </span>
         <button
           type="button"
@@ -112,7 +121,7 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
       </div>
 
       <div className="match-card__footer">
-        <span>{match.shortStatus}</span>
+        <span>{activeStatus}</span>
 
         {currentOvers !== null && <span>{currentOvers} Overs</span>}
       </div>

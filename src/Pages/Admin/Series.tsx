@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./Series.css";
 import { showError, showSuccess } from "../../services/common/AlertService";
-import { createSeries, getSeries } from "../../services/SeriesService";
+import { createSeries, getSeries, deleteSeries } from "../../services/SeriesService";
 import { sportService } from "../../services/fixturesservice";
 import { getTeams } from "../../services/TeamService";
 import Loader from "../../components/Loader/Loader";
@@ -74,6 +74,25 @@ function Series() {
         } catch (error) {
             console.error("Error fetching sports:", error);
             showError("Error", "Failed to fetch sports list.");
+        }
+    };
+
+    const handleDeleteSeries = async (seriesId: string, seriesName: string) => {
+        const confirmed = window.confirm(
+            `Are you sure you want to delete the series "${seriesName}"?\n\nThis action cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        try {
+            setIsLoading(true);
+            await deleteSeries(seriesId);
+            showSuccess("Success", "Series deleted successfully!");
+            await loadSeries();
+        } catch (error) {
+            console.error("Error deleting series:", error);
+            showError("Error", "Failed to delete series. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -270,6 +289,18 @@ function Series() {
                                     <div className="series-card__score">
                                         {uniqueSeriesTeams.length} Teams
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        className="series-card__delete"
+                                        onClick={() => handleDeleteSeries(series.id, series.name)}
+                                        title={`Delete "${series.name}"`}
+                                        aria-label={`Delete series ${series.name}`}
+                                        disabled={isLoading}
+                                    >
+                                        ✕
+                                    </button>
+                                    
                                 </div>
                             );
                         })

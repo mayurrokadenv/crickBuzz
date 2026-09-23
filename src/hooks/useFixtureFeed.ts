@@ -114,7 +114,7 @@ function normalizeFixture(
     return null;
   }
  
-  const id =
+  const rawId =
     getValue<string>(raw, "id", "Id") ??
     getValue<string>(
       raw,
@@ -122,28 +122,34 @@ function normalizeFixture(
       "FixtureId",
     );
  
-  if (!id) {
+  if (!rawId) {
     return null;
   }
+  const id = String(rawId);
  
   const normalized: Fixture = {
     ...raw,
- 
     id,
- 
-    fixtureId:
-      getValue<string>(
-        raw,
-        "fixtureId",
-        "FixtureId",
-      ) ?? id,
- 
-    updatedAtUtc:
-      getValue<string>(
-        raw,
-        "updatedAtUtc",
-        "UpdatedAtUtc",
-      ),
+    fixtureId: String(getValue<string>(raw, "fixtureId", "FixtureId") ?? id),
+    homeTeamId: getValue<string>(raw, "homeTeamId", "HomeTeamId"),
+    homeTeamName: getValue<string>(raw, "homeTeamName", "HomeTeamName"),
+    awayTeamId: getValue<string>(raw, "awayTeamId", "AwayTeamId"),
+    awayTeamName: getValue<string>(raw, "awayTeamName", "AwayTeamName"),
+    status: getValue<string>(raw, "status", "Status"),
+    startTimeUtc: getValue<string>(raw, "startTimeUtc", "StartTimeUtc"),
+    scheduledAtUtc: getValue<string>(raw, "scheduledAtUtc", "ScheduledAtUtc"),
+    venue: getValue<string>(raw, "venue", "Venue"),
+    totalOvers: getValue<number>(raw, "totalOvers", "TotalOvers"),
+    seriesId: getValue<string | null>(raw, "seriesId", "SeriesId"),
+    updatedAtUtc: getValue<string>(raw, "updatedAtUtc", "UpdatedAtUtc"),
+    homeScore: getValue<number>(raw, "homeScore", "HomeScore") ?? getValue<number>(raw, "homeRuns", "HomeRuns"),
+    homeWickets: getValue<number>(raw, "homeWickets", "HomeWickets"),
+    homeOvers: getValue<string>(raw, "homeOvers", "HomeOvers"),
+    awayScore: getValue<number>(raw, "awayScore", "AwayScore") ?? getValue<number>(raw, "awayRuns", "AwayRuns"),
+    awayWickets: getValue<number>(raw, "awayWickets", "AwayWickets"),
+    awayOvers: getValue<string>(raw, "awayOvers", "AwayOvers"),
+    sport: getValue<string>(raw, "sport", "Sport"),
+    sportId: getValue<string>(raw, "sportId", "SportId"),
   };
  
   return normalized;

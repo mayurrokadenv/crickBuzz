@@ -14,11 +14,34 @@ import TopPerformers from "../components/TopPerformers/TopPerformers";
 import NVianLiveSummary from "../components/NVianLiveSummary/NVianLiveSummary";
 import Loader from "../components/Loader/Loader";
 import { useNVianDashboardSearch } from "../context/NVianDashboardSearchContext";
+import { useFixtureFeed } from "../hooks/useFixtureFeed";
+import type { Fixture as SignalRFixture } from "../hooks/useFixtureFeed";
 import "./Dashboard.css";
+
+function mapSignalRFixture(fixture: SignalRFixture): Fixture {
+  return {
+    id: fixture.id,
+    homeTeamId: String(fixture.homeTeamId ?? ""),
+    homeTeamName: String(fixture.homeTeamName ?? "Home team"),
+    awayTeamId: String(fixture.awayTeamId ?? ""),
+    awayTeamName: String(fixture.awayTeamName ?? "Away team"),
+    sport: String(fixture.sport ?? "Cricket"),
+    scheduledAtUtc: String(fixture.scheduledAtUtc ?? fixture.startTimeUtc ?? ""),
+    status: String(fixture.status ?? "Scheduled"),
+    homeScore: Number(fixture.homeScore ?? 0),
+    homeWickets: Number(fixture.homeWickets ?? 0),
+    homeOvers: String(fixture.homeOvers ?? "0.0"),
+    awayOvers: String(fixture.awayOvers ?? "0.0"),
+    awayScore: Number(fixture.awayScore ?? 0),
+    awayWickets: Number(fixture.awayWickets ?? 0),
+    sportId: String(fixture.sportId ?? ""),
+  };
+}
 
 function NVianDashboard() {
   const { searchTerm, setSearchTerm, matches, loading } =
     useNVianDashboardSearch();
+  const { createdFixtures } = useFixtureFeed();
 
   const [selectedSportId, setSelectedSportId] = useState("all");
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(
@@ -26,10 +49,23 @@ function NVianDashboard() {
   );
   const [showAllMatches, setShowAllMatches] = useState(false);
 
+  const liveMatches = [
+    ...matches,
+    ...createdFixtures
+      .filter(
+        (createdFixture) =>
+          !matches.some(
+            (match) =>
+              match.id.toLowerCase() === createdFixture.id.toLowerCase(),
+          ),
+      )
+      .map(mapSignalRFixture),
+  ];
+
   const filteredMatches =
     selectedSportId === "all"
-      ? matches
-      : matches.filter((m) => m.sportId === selectedSportId);
+      ? liveMatches
+      : liveMatches.filter((m) => m.sportId === selectedSportId);
 
   const matchCards = filteredMatches.map(mapFixtureToMatchCard);
   const visibleMatchCards = showAllMatches

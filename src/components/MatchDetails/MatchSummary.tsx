@@ -1,6 +1,6 @@
 import "./MatchSummary.css";
 
-import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 import type {
   MatchHeaderModel,
   MatchLiveModel,
@@ -14,9 +14,7 @@ type MatchSummaryProps = {
 function MatchSummary({ header, live }: MatchSummaryProps) {
   const fixtureId = header.matchId || "";
   const { scoreByMatch } = useScoreUpdateFeed(String(fixtureId));
-  const realtime = fixtureId
-    ? scoreByMatch[String(fixtureId)] ?? scoreByMatch[String(fixtureId).toLowerCase()]
-    : undefined;
+  const realtime = fixtureId ? getScoreForFixture(scoreByMatch, String(fixtureId)) : undefined;
 
   const innings = live.matchScoreDetails.inningsScoreList;
 

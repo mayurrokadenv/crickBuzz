@@ -1,7 +1,7 @@
 import React, { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { FeedingMatchs } from "../../services/match.types";
 import { getLiveMatches } from "../../services/liveservice";
-import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 import Loader from "../Loader/Loader";
 import "./FeedingMatch.css";
 
@@ -114,7 +114,7 @@ const FeedingMatchComponent = ({
   const { scoreByMatch } = useScoreUpdateFeed(selectedMatch?.fixtureId ?? "");
   console.log("FeedingMatch: Score updates in FeedingMatch:====================>", scoreByMatch);
   const realtime = selectedMatch?.fixtureId
-    ? scoreByMatch[selectedMatch.fixtureId]
+    ? getScoreForFixture(scoreByMatch, selectedMatch.fixtureId)
     : undefined;
 
 

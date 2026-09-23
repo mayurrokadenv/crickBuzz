@@ -6,6 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 // --- Add these interfaces for the nested scorecard data ---
 export interface BattingFigure {
+  id?: string;
   playerId: string;
   playerName: string;
   runs: number;
@@ -16,6 +17,7 @@ export interface BattingFigure {
 }
 
 export interface BowlingFigure {
+  id?: string;
   playerId: string;
   playerName: string;
   overs: string;
@@ -33,6 +35,7 @@ export interface Scorecard {
   inningsNo: number;
   battingTeamId: string;
   bowlingTeamId: string;
+  winningTeamId?: string;
   battingFigures: BattingFigure[];
   bowlingFigures: BowlingFigure[];
 }
@@ -40,6 +43,8 @@ export interface Scorecard {
 // Shape used by UI
 export interface ScoreUpdate {
   fixtureId: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
   battingTeamId?: string;
   phase?: string;
   homeScore: number;
@@ -58,11 +63,29 @@ export interface ScoreUpdate {
     balls: number;
   };
   recentOvsStats?: string;
+  sportId?: string;
+  homeTeamName?: string;
+  awayTeamName?: string;
+
+}
+
+export function getScoreForFixture(
+  scoreByMatch: Record<string, ScoreUpdate>,
+  fixtureId: string,
+): ScoreUpdate | undefined {
+  const normalizedId = fixtureId.toLowerCase();
+  return scoreByMatch[fixtureId]
+    ?? scoreByMatch[normalizedId]
+    ?? Object.entries(scoreByMatch).find(([key]) => key.toLowerCase() === normalizedId)?.[1];
 }
 
 // Shape received from backend SignalR
 interface BackendScoreUpdate {
   fixtureId: string;
+  homeTeamId?: string;
+  HomeTeamId?: string;
+  awayTeamId?: string;
+  AwayTeamId?: string;
   battingTeamId?: string;
   phase?: string;
   homeRuns: number;
@@ -81,6 +104,10 @@ interface BackendScoreUpdate {
     balls: number;
   };
   recentOvsStats?: string;
+  sportId?: string;
+  SportsId?: string;
+  homeTeamName?: string;
+  awayTeamName?: string;
 }
 
 const SCORE_EVENT = "ScoreUpdated";
@@ -121,6 +148,11 @@ function mergeScoreUpdate(fixtureId: string, update: Partial<ScoreUpdate>): Scor
     ...previous,
     ...update,
     fixtureId,
+    homeTeamId: update.homeTeamId ?? previous?.homeTeamId,
+    awayTeamId: update.awayTeamId ?? previous?.awayTeamId,
+    homeTeamName: update.homeTeamName ?? previous?.homeTeamName,
+    awayTeamName: update.awayTeamName ?? previous?.awayTeamName,
+    sportId: update.sportId ?? previous?.sportId,
     homeScore: update.homeScore ?? previous?.homeScore ?? 0,
     awayScore: update.awayScore ?? previous?.awayScore ?? 0,
     homeWickets: update.homeWickets ?? previous?.homeWickets,
@@ -149,6 +181,8 @@ async function refreshFixtureSnapshot(fixtureId: string) {
     const raw = (await response.json()) as Record<string, unknown>;
     const snapshot = mergeScoreUpdate(fixtureId, {
       fixtureId,
+      homeTeamId: (raw.homeTeamId ?? raw.HomeTeamId) as string | undefined,
+      awayTeamId: (raw.awayTeamId ?? raw.AwayTeamId) as string | undefined,
       battingTeamId: (raw.battingTeamId ?? raw.BattingTeamId) as string | undefined,
       phase: (raw.phase ?? raw.Phase) as string | undefined,
       homeScore: getUpdateValue<number>(raw as unknown as BackendScoreUpdate, "homeRuns", "HomeRuns") ??
@@ -165,6 +199,9 @@ async function refreshFixtureSnapshot(fixtureId: string) {
       status: (raw.status ?? raw.Status) as string | undefined,
       partnerShip: (raw.partnerShip ?? raw.PartnerShip) as ScoreUpdate["partnerShip"],
       recentOvsStats: (raw.recentOvsStats ?? raw.RecentOvsStats) as string | undefined,
+      homeTeamName: (raw.homeTeamName ?? raw.HomeTeamName) as string | undefined,
+      awayTeamName: (raw.awayTeamName ?? raw.AwayTeamName) as string | undefined,
+      sportId: (raw.sportId ?? raw.SportId) as string | undefined,
     });
 
     sharedScoreByMatch = {
@@ -187,16 +224,22 @@ function ensureSharedConnection() {
   connection.on(SCORE_EVENT, (update: BackendScoreUpdate) => {
     const fixtureId = getUpdateValue<string>(update, "fixtureId", "FixtureId");
     if (!fixtureId) return;
+    console.log("ScoreUpdated received for fixture:", fixtureId, update);
 
     console.debug("ScoreUpdated received for fixture:", fixtureId, update);
 
     const scoreUpdate = mergeScoreUpdate(fixtureId, {
       fixtureId,
+      homeTeamId: getUpdateValue<string>(update, "homeTeamId", "HomeTeamId"),
+      awayTeamId: getUpdateValue<string>(update, "awayTeamId", "AwayTeamId"),
+      homeTeamName: getUpdateValue<string>(update, "homeTeamName", "HomeTeamName"),
+      awayTeamName: getUpdateValue<string>(update, "awayTeamName", "AwayTeamName"),
+      sportId: getUpdateValue<string>(update, "sportId", "SportId"),
       battingTeamId: getUpdateValue<string>(update, "battingTeamId", "BattingTeamId"),
       phase: getUpdateValue<string>(update, "phase", "Phase"),
-      homeScore: getUpdateValue<number>(update, "homeRuns", "HomeRuns") ?? 0,
+      homeScore: getUpdateValue<number>(update, "homeRuns", "HomeRuns"),
       homeWickets: getUpdateValue<number>(update, "homeWickets", "HomeWickets"),
-      awayScore: getUpdateValue<number>(update, "awayRuns", "AwayRuns") ?? 0,
+      awayScore: getUpdateValue<number>(update, "awayRuns", "AwayRuns"),
       awayWickets: getUpdateValue<number>(update, "awayWickets", "AwayWickets"),
       homeOvers: getUpdateValue<string>(update, "homeOvers", "HomeOvers"),
       awayOvers: getUpdateValue<string>(update, "awayOvers", "AwayOvers"),
@@ -283,8 +326,9 @@ export function useScoreUpdateFeed(fixtureId: string) {
     fixtureSubscribers.set(fixtureId, (fixtureSubscribers.get(fixtureId) ?? 0) + 1);
     void ensureSharedConnection()
       .then(() => joinFixtureGroup(fixtureId))
-      .then(() => refreshFixtureSnapshot(fixtureId))
-      .catch(() => undefined);
+      .catch((err) => console.error("Failed to join fixture group", fixtureId, err));
+
+      void refreshFixtureSnapshot(fixtureId);
 
     return () => {
       const count = fixtureSubscribers.get(fixtureId) ?? 0;

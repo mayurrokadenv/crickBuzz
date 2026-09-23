@@ -21,9 +21,22 @@
     padding: 24px;
     border-radius: 16px;
     border: 1px solid #26334D;
-    height: fit-content;
-    max-height: 80vh;
-    overflow-y: auto;
+    height: 70vh;
+    max-height: 70vh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.right-side > h2 {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding-bottom: 8px;
+    background: #151a27;
 }
 
 
@@ -178,10 +191,14 @@
 }
 
 .series-list {
+    min-height: 0;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     gap: 12px;
     margin-top: 16px;
+    overflow-y: auto;
+    padding-right: 6px;
 }
 
 .series-card {
@@ -257,6 +274,16 @@
     white-space: nowrap;
 }
 
+.series-card__score1 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #E2E8F0;
+    border: 1px solid #E2E8F0;
+    padding: 4px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
 
 .empty-state {
     color: #64748b;
@@ -264,4 +291,62 @@
     text-align: center;
     padding: 40px 0;
     font-style: italic;
+}
+
+
+.series-card__delete {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    line-height: 1;
+    color: #94A3B8;
+    background: transparent;
+    border: 1px solid #475569;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: color 0.2s ease,
+                background 0.2s ease,
+                border-color 0.2s ease,
+                transform 0.12s ease,
+                box-shadow 0.2s ease;
+}
+
+/* Hover – signals it's clickable and hints "danger" */
+.series-card__delete:hover {
+    color: #fff;
+    background: #ef4444;
+    border-color: #ef4444;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+}
+
+/* Active – gives the "press" feel so users feel the click land */
+.series-card__delete:active {
+    transform: scale(0.9);
+    background: #dc2626;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35);
+}
+
+/* Keyboard focus */
+.series-card__delete:focus-visible {
+    outline: 2px solid #ef4444;
+    outline-offset: 2px;
+}
+
+.series-card__delete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    background: transparent;
+    border-color: #475569;
+    color: #94A3B8;
+    box-shadow: none;
 }

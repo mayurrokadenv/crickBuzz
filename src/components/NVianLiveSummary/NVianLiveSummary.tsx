@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getFixtureMatchDetails } from "../../services/MatchDataService";
-import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 import Loader from "../Loader/Loader";
 import { useCommentaryFeed } from "../../hooks/useCommentaryFeed";
 import type { FixtureDetailsDto } from "../types/FixtureDetails";
@@ -39,8 +39,10 @@ function NVianLiveSummary({ fixtureId }: Props) {
 
   console.log("NVianLiveSummary: Score updates in NVianLiveSummary:====================>", scoreByMatch);
   const { commentaryByMatch } = useCommentaryFeed(fixtureId ?? "");
-  const liveCommentary = fixtureId ? commentaryByMatch[fixtureId] : undefined;
-  const realtime = fixtureId ? scoreByMatch[fixtureId] : undefined;
+  const liveCommentary = fixtureId
+    ? commentaryByMatch[fixtureId] ?? commentaryByMatch[fixtureId.toLowerCase()]
+    : undefined;
+  const realtime = fixtureId ? getScoreForFixture(scoreByMatch, fixtureId) : undefined;
 
   console.log("NVianLiveSummary: Realtime score for fixtureId in NVianLiveSummary==============>", fixtureId, ":", realtime);
 

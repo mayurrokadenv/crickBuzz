@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import "./FixtureList.css";
-import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 import { fixtureService, type Fixture } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
 import Loader from "../Loader/Loader";
@@ -10,7 +10,7 @@ type EditableFixture = Omit<Fixture, "battingTeamId"> & {
   awayOvers?: string;
   statusValue: number;
   phaseValue: number;
-  battingTeamId?: string;
+  battingTeamId?: string | null;
   originalStatusValue?: number;
 };
 
@@ -48,7 +48,7 @@ function FixtureListItem({
     "FixtureListItem: Score updates in FixtureListItem:====================>",
     scoreByMatch,
   );
-  const realtime = fixture.id ? scoreByMatch[String(fixture.id)] : undefined;
+  const realtime = fixture.id ? getScoreForFixture(scoreByMatch, String(fixture.id)) : undefined;
 
   console.log(
     "FixtureListItem: Realtime score for fixtureId in FixtureList===============>",
@@ -245,7 +245,7 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
           statusValue: getStatusValue(f.status),
           phaseValue: getPhaseValue(f.phase),
           battingTeamId:
-            (f as unknown as { battingTeamId?: string }).battingTeamId ?? "",
+            (f as unknown as { battingTeamId?: string | null }).battingTeamId || null,
           originalStatusValue: getStatusValue(f.status),
         })),
       );
@@ -312,12 +312,17 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
 
   const handleSave = async (fixture: EditableFixture) => {
     try {
+      const battingTeamId =
+        fixture.sport?.toLowerCase() === "football"
+          ? null
+          : fixture.battingTeamId || null;
+
       const updated = await fixtureService.updateFixture(
         fixture.id,
         fixture.statusValue,
         fixture.phaseValue,
         fixture.scheduledAtUtc,
-        fixture.battingTeamId ?? "",
+        battingTeamId,
       );
 
       console.log("Updated fixture:=====================>", updated);
@@ -347,15 +352,27 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
     } catch (err: unknown) {
       loadFixtures();
       const error = err as {
-        response?: { data?: { detail?: string } };
+        response?: {
+          data?: {
+            detail?: string;
+            errors?: Record<string, string | string[]>;
+          };
+        };
       };
+      const responseData = error.response?.data;
+      const validationMessage = responseData?.errors
+        ? Object.values(responseData.errors)
+            .flat()
+            .join(" ")
+        : undefined;
+
       console.log(
         "Error updating fixture:=====================>",
         error.response || error,
       );
       showError(
         "Error",
-        error.response?.data?.detail || "Unable to update fixture.",
+        validationMessage || responseData?.detail || "Unable to update fixture.",
       );
     }
   };

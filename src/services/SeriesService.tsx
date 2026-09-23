@@ -78,3 +78,15 @@ export const getPointsTable = async (seriesId: string): Promise<any> => {
 
   return await response.json();
 };
+
+export const deleteSeries = async (seriesId: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/series/${seriesId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete series.");
+  }
+};

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import "./ScoreCard.css";
-import useScoreUpdateFeed from "../../hooks/useScoreUpdateFeed";
+import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
+import { useCommentaryFeed } from "../../hooks/useCommentaryFeed";
 
 export type CommentaryEntry = {
   id: string;
@@ -138,8 +139,14 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
   );
 
   const { scoreByMatch } = useScoreUpdateFeed(fixture?.id ?? "");
+  const { commentaryByMatch } = useCommentaryFeed(fixture?.id ?? "");
 
-  const realtime = fixture?.id ? scoreByMatch[fixture.id] : undefined;
+  const realtime = fixture?.id ? getScoreForFixture(scoreByMatch, fixture.id) : undefined;
+  const liveCommentary = fixture?.id
+    ? commentaryByMatch[fixture.id] ?? commentaryByMatch[fixture.id.toLowerCase()]
+    : undefined;
+
+  console.log("FixtureScoreCard: Realtime score for fixtureId in FixtureScoreCard==============>", fixture.id, ":", realtime);
 
   // ============================================================
   // PRIORITIZE REALTIME DATA OVER INITIAL FIXTURE PROP
@@ -155,9 +162,20 @@ function FixtureScoreCard({ fixture }: ScoreCardProps) {
   const activeScorecards =
     realtimeScorecards.length > 0 ? realtimeScorecards : fixtureScorecards;
 
-  // Commentary: allow future realtime override, fall back to fixture prop
-  const activeCommentary =
-    (realtime as any)?.commentary ?? fixture?.commentary ?? [];
+  // Keep the historical commentary from the fixture and append the latest
+  // commentary event received through the dedicated commentary feed.
+  const activeCommentary = liveCommentary
+    ? [
+        {
+          ...liveCommentary,
+          playerId: "",
+          sportName: fixture?.sport ?? "",
+        },
+        ...(fixture?.commentary ?? []).filter(
+          (entry) => entry.id !== liveCommentary.id,
+        ),
+      ]
+    : fixture?.commentary ?? [];
 
   // Top performers: allow future realtime override, fall back to fixture prop
   const activeTopPerformers =
