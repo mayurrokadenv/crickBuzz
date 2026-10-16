@@ -26,6 +26,7 @@ const FeedingMatchComponent = ({
   const [internalSelectedMatchId, setInternalSelectedMatchId] = useState<number>(0);
   const selectedMatchId = selectedMatchIdProp ?? internalSelectedMatchId;
   const selectedMatchIdRef = useRef(selectedMatchId);
+  const lastLoadedMatchesRef = useRef<FeedingMatchs[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,18 +39,6 @@ const FeedingMatchComponent = ({
     onMatchSelect?.(match);
   };
 
-  const fallbackMatches: FeedingMatchs[] = [
-    {
-      id: 1,
-      sport: "Cricket",
-      team1: "Mumbai",
-      team2: "Chennai",
-      score: "186/5",
-      stage: "2nd Innings",
-      progress: "Over 18.3",
-    },
-  ];
-
   // Load matches on mount or when external matches change
   useEffect(() => {
     if (externalMatches && externalMatches.length > 0) {
@@ -58,6 +47,9 @@ const FeedingMatchComponent = ({
       if (!externalMatches.some((m) => m.id === selectedMatchId)) {
         selectMatch(externalMatches[0]);
       }
+      setLoading(false);
+    } else if (externalMatches && externalMatches === lastLoadedMatchesRef.current) {
+      setFeedingMatches(externalMatches);
       setLoading(false);
     } else {
       fetchLiveMatches();
@@ -84,29 +76,30 @@ const FeedingMatchComponent = ({
       if (matches.length > 0) {
         console.log("FeedingMatch: Fetched matches:", matches);
         setFeedingMatches(matches);
+        lastLoadedMatchesRef.current = matches;
         const selected = matches.find(
           (match) => match.id === selectedMatchIdRef.current,
         ) ?? matches[0];
         selectMatch(selected);
         onMatchesLoaded?.(matches);
       } else {
-        console.log("FeedingMatch: Using fallback matches");
-        setFeedingMatches(fallbackMatches);
-        selectMatch(fallbackMatches[0]);
-        onMatchesLoaded?.(fallbackMatches);
+        setFeedingMatches([]);
+        lastLoadedMatchesRef.current = matches;
+        onMatchesLoaded?.(matches);
       }
     } catch (error) {
       console.error("FeedingMatch: Error fetching:", error);
-      setError("Failed to load live matches. Showing demo data.");
-      setFeedingMatches(fallbackMatches);
-      selectMatch(fallbackMatches[0]);
-      onMatchesLoaded?.(fallbackMatches);
+      setError("Failed to load live matches.");
+      const noMatches: FeedingMatchs[] = [];
+      setFeedingMatches(noMatches);
+      lastLoadedMatchesRef.current = noMatches;
+      onMatchesLoaded?.(noMatches);
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedMatch: FeedingMatchs = useMemo(() => {
+  const selectedMatch = useMemo(() => {
     const match = feedingMatches.find((match) => match.id === selectedMatchId);
     return match ?? feedingMatches[0];
   }, [selectedMatchId, feedingMatches]);
@@ -160,19 +153,23 @@ const FeedingMatchComponent = ({
         <span>FEEDING MATCH</span>
         {error && <span className="error-badge">{error}</span>}
       </div>
-      <div className="match-select-container">
-        <select
-          className="match-select"
-          value={selectedMatchId}
-          onChange={handleMatchChange}
-        >
-          {feedingMatches.map((match) => (
-            <option key={match.id} value={match.id}>
-              {match.sport}: {match.team1} vs {match.team2}
-            </option>
-          ))}
-        </select>
-      </div>
+      {feedingMatches.length > 0 ? (
+        <div className="match-select-container">
+          <select
+            className="match-select"
+            value={selectedMatchId}
+            onChange={handleMatchChange}
+          >
+            {feedingMatches.map((match) => (
+              <option key={match.id} value={match.id}>
+                {match.sport}: {match.team1} vs {match.team2}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div className="no-matches">No feeding match available</div>
+      )}
       {displayedMatch && (
         <div className="match-status">
           <span className="stage">{displayedMatch.stage}</span>

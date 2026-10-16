@@ -93,7 +93,6 @@
 .score-control .feed-score {
   color: #2f80ff;
   font-size: 12px;
-  cursor: pointer;
   transition: color 0.2s;
 }
 

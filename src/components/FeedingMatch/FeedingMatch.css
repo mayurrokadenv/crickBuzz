@@ -28,6 +28,13 @@
     min-width: 300px;
 }
 
+.no-matches {
+    flex: 1;
+    color: #8e97b2;
+    font-size: 15px;
+    padding: 10px 16px;
+}
+
 .match-select {
     width: 100%;
     background: #1f2532;
