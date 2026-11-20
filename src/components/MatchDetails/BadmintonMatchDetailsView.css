@@ -1,0 +1,177 @@
+.badminton-match-details-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+}
+
+.badminton-match-details {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid #2d3647;
+  border-radius: 16px;
+  background: #1a212d;
+  color: #fff;
+}
+
+.badminton-match-details__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #2d3647;
+}
+
+.badminton-match-details__sport {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #2b3445;
+  color: #dce5f2;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badminton-match-details__header h1 {
+  margin: 14px 0 6px;
+  font-size: clamp(22px, 3vw, 32px);
+}
+
+.badminton-match-details__header h1 span {
+  color: #91a0b7;
+  font-weight: 400;
+}
+
+.badminton-match-details__header p {
+  margin: 0;
+  color: #9aa4b2;
+}
+
+.badminton-match-details__status {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #2b3445;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badminton-match-details__header-result {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.badminton-match-details__winner {
+  margin: 0;
+  color: #22c55e;
+  font-weight: 700;
+  text-align: right;
+}
+
+.badminton-match-details__status--live {
+  background: #173c2b;
+  color: #4ade80;
+}
+
+.badminton-match-details__rules {
+  margin: -4px 0 0;
+  color: #a7b3c5;
+  font-size: 13px;
+}
+
+.badminton-match-details__current {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.badminton-match-details__current > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #2d3647;
+  border-radius: 12px;
+  background: #202b3a;
+}
+
+.badminton-match-details__current span {
+  color: #a7b3c5;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.badminton-match-details__current strong {
+  font-size: 28px;
+}
+
+.badminton-match-details__current small {
+  color: #8e9db2;
+}
+
+.badminton-match-details__scores h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.badminton-match-details__table-wrap {
+  overflow-x: auto;
+  border: 1px solid #2d3647;
+  border-radius: 10px;
+}
+
+.badminton-match-details__scores table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.badminton-match-details__scores th,
+.badminton-match-details__scores td {
+  padding: 12px;
+  border-bottom: 1px solid #2d3647;
+}
+
+.badminton-match-details__scores thead th {
+  color: #a7b3c5;
+  font-size: 12px;
+}
+
+.badminton-match-details__scores tbody tr:last-child th,
+.badminton-match-details__scores tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.badminton-match-details__current-row {
+  background: #202b3a;
+}
+
+.badminton-match-details__error {
+  margin: 0;
+  color: #ff9a9a;
+}
+
+@media (max-width: 600px) {
+  .badminton-match-details-page,
+  .badminton-match-details {
+    padding: 16px;
+  }
+
+  .badminton-match-details__header {
+    flex-direction: column;
+  }
+
+  .badminton-match-details__current {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,3 +1,5 @@
+import type { FixtureSetScoreDto } from "./FixtureDetails";
+
 export type MatchSource = "cricbuzz" | "internal";
 
 export interface MatchCardModel {
@@ -20,4 +22,6 @@ export interface MatchCardModel {
   homeOvers?: string | null;
   awayOvers?: string | null;
   overs: number | null;
+  currentSet?: number;
+  sets?: FixtureSetScoreDto[];
 }

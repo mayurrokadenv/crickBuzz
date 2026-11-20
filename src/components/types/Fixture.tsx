@@ -1,3 +1,5 @@
+import type { FixtureSetScoreDto } from "./FixtureDetails";
+
 export interface Fixture {
   id: string;
 
@@ -18,4 +20,6 @@ export interface Fixture {
   awayScore: number;
   awayWickets: number;
   sportId: string;
+  currentSet?: number;
+  sets?: FixtureSetScoreDto[];
 }

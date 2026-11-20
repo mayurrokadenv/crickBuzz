@@ -3,7 +3,7 @@ import SearchBar from "../components/Search/SearchBar";
 import Header from "../components/Header/Header";
 import SportTabs from "../components/SportTabs/SportTabs";
 import MatchGrid from "../components/MatchGrid/MatchGrid";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Fixture } from "../components/types/Fixture";
 import { mapFixtureToMatchCard } from "../components/MatchGrid/fixtureMatchCardMapper";
 import {
@@ -16,7 +16,31 @@ import Loader from "../components/Loader/Loader";
 import { useNVianDashboardSearch } from "../context/NVianDashboardSearchContext";
 import { useFixtureFeed } from "../hooks/useFixtureFeed";
 import type { Fixture as SignalRFixture } from "../hooks/useFixtureFeed";
+import {
+  BADMINTON_LOCAL_FIXTURE_CHANGED_EVENT,
+  getAllTemporaryBadmintonFixtureDetails,
+  type StoredTemporaryBadmintonFixture,
+} from "../services/temporaryBadmintonFixtureService";
+import {
+  BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+  getTemporaryBadmintonScore,
+} from "../services/temporaryBadmintonScoreService";
+import { isLocalRacquetSport } from "../utils/localRacquetSports";
 import "./Dashboard.css";
+
+function getSetNumber(phase: string, fallback: number | undefined) {
+  const normalizedPhase = phase.toLowerCase().replace(/[\s_-]/g, "");
+  const phaseSetNumbers: Record<string, number> = {
+    set1: 1,
+    firstset: 1,
+    set2: 2,
+    secondset: 2,
+    set3: 3,
+    thirdset: 3,
+  };
+  const phaseSet = phaseSetNumbers[normalizedPhase];
+  return phaseSet ?? (fallback && fallback >= 1 && fallback <= 3 ? fallback : 1);
+}
 
 function mapSignalRFixture(fixture: SignalRFixture): Fixture {
   return {
@@ -43,13 +67,130 @@ function NVianDashboard() {
     useNVianDashboardSearch();
   const { createdFixtures } = useFixtureFeed();
 
+  const [temporaryBadmintonFixtures, setTemporaryBadmintonFixtures] = useState<
+    Fixture[]
+  >([]);
+  const [localFixtureError, setLocalFixtureError] = useState<string | null>(
+    null,
+  );
   const [selectedSportId, setSelectedSportId] = useState("all");
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(
     null,
   );
   const [showAllMatches, setShowAllMatches] = useState(false);
 
-  const liveMatches = [
+  const refreshTemporaryBadmintonFixtures = useCallback(() => {
+    let localError: string | null = null;
+    let savedFixtures: StoredTemporaryBadmintonFixture[];
+    try {
+      savedFixtures = getAllTemporaryBadmintonFixtureDetails();
+    } catch (error: unknown) {
+      console.error("Failed to load local racquet fixtures", error);
+      setTemporaryBadmintonFixtures([]);
+      setLocalFixtureError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load local racquet fixtures.",
+      );
+      return;
+    }
+
+    const fixtures = savedFixtures.flatMap(
+      (savedFixture: StoredTemporaryBadmintonFixture) => {
+        const { fixtureId, details } = savedFixture;
+        const apiFixture = matches.find(
+          (match) => match.id.toLowerCase() === fixtureId.toLowerCase(),
+        );
+        const sport = details.sport ?? apiFixture?.sport ?? "";
+        const homeTeamName =
+          details.homeTeamName ?? apiFixture?.homeTeamName ?? "";
+        const awayTeamName =
+          details.awayTeamName ?? apiFixture?.awayTeamName ?? "";
+
+        if (!isLocalRacquetSport(sport) || !homeTeamName || !awayTeamName) {
+          return [];
+        }
+
+        try {
+          const localScore = getTemporaryBadmintonScore(fixtureId);
+          const currentSet =
+            localScore?.currentSet ??
+            getSetNumber(details.phase, apiFixture?.currentSet);
+          const sets =
+            localScore?.sets ??
+            apiFixture?.sets ??
+            [1, 2, 3].map((setNumber) => ({
+              setNumber,
+              teamA:
+                setNumber === currentSet ? apiFixture?.homeScore ?? 0 : 0,
+              teamB:
+                setNumber === currentSet ? apiFixture?.awayScore ?? 0 : 0,
+            }));
+          const activeSet = sets.find((set) => set.setNumber === currentSet);
+
+          return [
+            {
+              id: fixtureId,
+              homeTeamId: details.homeTeamId ?? apiFixture?.homeTeamId ?? "",
+              homeTeamName,
+              awayTeamId: details.awayTeamId ?? apiFixture?.awayTeamId ?? "",
+              awayTeamName,
+              sport,
+              sportId: details.sportId ?? apiFixture?.sportId ?? "",
+              status: details.status,
+              scheduledAtUtc:
+                details.scheduledAtUtc ?? apiFixture?.scheduledAtUtc ?? "",
+              homeScore: activeSet?.teamA ?? 0,
+              homeWickets: 0,
+              homeOvers: apiFixture?.homeOvers ?? "0.0",
+              awayScore: activeSet?.teamB ?? 0,
+              awayWickets: 0,
+              awayOvers: apiFixture?.awayOvers ?? "0.0",
+              currentSet,
+              sets,
+            },
+          ];
+        } catch (error: unknown) {
+          console.error("Failed to load local racquet dashboard data", error);
+          localError =
+            error instanceof Error
+              ? error.message
+              : "Unable to load local racquet match data.";
+          return [];
+        }
+      },
+    );
+
+    setTemporaryBadmintonFixtures(fixtures);
+    setLocalFixtureError(localError);
+  }, [matches]);
+
+  useEffect(() => {
+    refreshTemporaryBadmintonFixtures();
+    window.addEventListener(
+      BADMINTON_LOCAL_FIXTURE_CHANGED_EVENT,
+      refreshTemporaryBadmintonFixtures,
+    );
+    window.addEventListener(
+      BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+      refreshTemporaryBadmintonFixtures,
+    );
+    window.addEventListener("storage", refreshTemporaryBadmintonFixtures);
+
+    return () => {
+      window.removeEventListener(
+        BADMINTON_LOCAL_FIXTURE_CHANGED_EVENT,
+        refreshTemporaryBadmintonFixtures,
+      );
+      window.removeEventListener(
+        BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+        refreshTemporaryBadmintonFixtures,
+      );
+      window.removeEventListener("storage", refreshTemporaryBadmintonFixtures);
+    };
+  }, [refreshTemporaryBadmintonFixtures]);
+
+  const sourceMatches = [
     ...matches,
     ...createdFixtures
       .filter(
@@ -62,10 +203,33 @@ function NVianDashboard() {
       .map(mapSignalRFixture),
   ];
 
+  const matchesById = new Map(
+    sourceMatches.map((fixture) => [fixture.id.toLowerCase(), fixture]),
+  );
+  temporaryBadmintonFixtures.forEach((fixture) => {
+    const key = fixture.id.toLowerCase();
+    const existing = matchesById.get(key);
+    matchesById.set(key, existing ? { ...existing, ...fixture } : fixture);
+  });
+  const liveMatches = Array.from(matchesById.values());
+
   const filteredMatches =
     selectedSportId === "all"
-      ? liveMatches
-      : liveMatches.filter((m) => m.sportId === selectedSportId);
+      ? liveMatches.filter((match) =>
+          searchTerm.trim()
+            ? `${match.sport} ${match.homeTeamName} ${match.awayTeamName}`
+                .toLowerCase()
+                .includes(searchTerm.trim().toLowerCase())
+            : true,
+        )
+      : liveMatches.filter(
+          (match) =>
+            match.sportId === selectedSportId &&
+            (!searchTerm.trim() ||
+              `${match.sport} ${match.homeTeamName} ${match.awayTeamName}`
+                .toLowerCase()
+                .includes(searchTerm.trim().toLowerCase())),
+        );
 
   const matchCards = filteredMatches.map(mapFixtureToMatchCard);
   const visibleMatchCards = showAllMatches
@@ -93,6 +257,11 @@ function NVianDashboard() {
         onSportChange={setSelectedSportId}
         showPointsTable
       />
+      {localFixtureError && (
+        <div className="nvian-local-fixture-error" role="alert">
+          {localFixtureError}
+        </div>
+      )}
       {loading ? (
         <section className="dashboard-empty-state">
           <Loader label="Loading matches..." fullWidth />

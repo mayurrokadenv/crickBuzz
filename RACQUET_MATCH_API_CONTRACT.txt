@@ -1,0 +1,324 @@
+PROPOSED RACQUET MATCH API CONTRACT
+==================================
+
+Purpose
+-------
+Define the server-backed resource for Badminton and Pickleball fixture metadata
+and scores. This is a proposed contract; the backend routes must be implemented
+and deployed before the frontend can call them.
+
+Base URL
+--------
+Use VITE_API_BASE_URL (defaults to /api). The exact default paths below include
+the /api prefix; when VITE_API_BASE_URL is a full URL, append the relative path
+after its base.
+Requests and responses use application/json.
+Apply the application's existing authentication and authorization middleware.
+
+Resource
+--------
+A racquet match is identified by the existing fixtureId. The API stores fixture
+metadata and all three game scores together so fixture phase and score updates
+can be persisted atomically.
+
+Methods and paths
+-----------------
+
+GET    /api/racquet-matches
+       List saved Badminton and Pickleball matches.
+       Optional filters: ?sport=Pickleball and/or ?status=Live.
+       Success: 200 with an array of RacquetMatch resources; no results returns [].
+
+GET    /api/racquet-matches/{fixtureId}
+       Read the saved fixture metadata and scores.
+       Success: 200 with the RacquetMatch response below.
+       Missing record: 404.
+
+POST   /api/racquet-matches
+       Create the local-scoring record for an existing fixture.
+       Request: RacquetMatch payload; fixtureId is required.
+       Success: 201 with the created RacquetMatch response.
+       Existing record: 409.
+       Unknown fixtureId: 404.
+
+PUT    /api/racquet-matches/{fixtureId}
+       Replace fixture metadata and scores for the specified fixtureId.
+       Request: complete RacquetMatch payload; body fixtureId must match the
+       route parameter.
+       Success: 200 with the updated RacquetMatch response.
+       Missing record: 404.
+       Invalid fixture phase, status, score, or sport: 400 or 422.
+
+DELETE /api/racquet-matches/{fixtureId}
+       Delete the saved fixture metadata and scores for the specified fixture.
+       Success: 204 with no response body, whether or not a racquet record
+       existed (idempotent cleanup).
+
+Authorization and consistency
+-----------------------------
+
+- GET access follows the existing fixture-view authorization policy.
+- POST, PUT, and DELETE require an authenticated admin or service role.
+- POST and PUT must validate that the canonical fixture exists and its sport is
+  Badminton or Pickleball.
+- score.isLive is true only when fixture.status is Live and fixture.phase
+  identifies score.currentSet. A completed match or non-live game cannot accept
+  point updates.
+- Reject stale or invalid updates with 409 or 422; do not silently overwrite
+  newer score data. If concurrent administrators are supported, use an ETag or
+  row version and require it on PUT.
+
+Payload and response schema
+---------------------------
+
+{
+  "fixtureId": "fixture-guid",
+  "sport": "Badminton",
+  "fixture": {
+    "status": "Scheduled",
+    "phase": "Set1",
+    "statusValue": 0,
+    "phaseValue": 2,
+    "scheduledAtUtc": "2026-11-20T12:00:00Z",
+    "battingTeamId": null,
+    "sportId": "sport-guid",
+    "homeTeamId": "home-team-guid",
+    "awayTeamId": "away-team-guid",
+    "homeTeamName": "NV B1",
+    "awayTeamName": "NV B2"
+  },
+  "score": {
+    "currentSet": 1,
+    "isLive": false,
+    "sets": [
+      { "setNumber": 1, "teamA": 0, "teamB": 0 },
+      { "setNumber": 2, "teamA": 0, "teamB": 0 },
+      { "setNumber": 3, "teamA": 0, "teamB": 0 }
+    ]
+  }
+}
+
+POST example: create a scheduled Badminton match
+------------------------------------------------
+
+POST /api/racquet-matches
+Content-Type: application/json
+
+{
+  "fixtureId": "badminton-fixture-guid",
+  "sport": "Badminton",
+  "fixture": {
+    "status": "Scheduled",
+    "phase": "Set1",
+    "statusValue": 0,
+    "phaseValue": 2,
+    "scheduledAtUtc": "2026-11-20T12:00:00Z",
+    "battingTeamId": null,
+    "sportId": "badminton-sport-guid",
+    "homeTeamId": "home-team-guid",
+    "awayTeamId": "away-team-guid",
+    "homeTeamName": "NV B1",
+    "awayTeamName": "NV B2"
+  },
+  "score": {
+    "currentSet": 1,
+    "isLive": false,
+    "sets": [
+      { "setNumber": 1, "teamA": 0, "teamB": 0 },
+      { "setNumber": 2, "teamA": 0, "teamB": 0 },
+      { "setNumber": 3, "teamA": 0, "teamB": 0 }
+    ]
+  }
+}
+
+POST example: create a scheduled Pickleball match
+-------------------------------------------------
+
+POST /api/racquet-matches
+Content-Type: application/json
+
+{
+  "fixtureId": "pickleball-fixture-guid",
+  "sport": "Pickleball",
+  "fixture": {
+    "status": "Scheduled",
+    "phase": "Set1",
+    "statusValue": 0,
+    "phaseValue": 2,
+    "scheduledAtUtc": "2026-11-20T13:00:00Z",
+    "battingTeamId": null,
+    "sportId": "pickleball-sport-guid",
+    "homeTeamId": "home-team-guid",
+    "awayTeamId": "away-team-guid",
+    "homeTeamName": "NV P1",
+    "awayTeamName": "NV P2"
+  },
+  "score": {
+    "currentSet": 1,
+    "isLive": false,
+    "sets": [
+      { "setNumber": 1, "teamA": 0, "teamB": 0 },
+      { "setNumber": 2, "teamA": 0, "teamB": 0 },
+      { "setNumber": 3, "teamA": 0, "teamB": 0 }
+    ]
+  }
+}
+
+PUT example: update a live Pickleball match
+-------------------------------------------
+
+PUT /api/racquet-matches/pickleball-fixture-guid
+Content-Type: application/json
+
+{
+  "fixtureId": "pickleball-fixture-guid",
+  "sport": "Pickleball",
+  "fixture": {
+    "status": "Live",
+    "phase": "Set2",
+    "statusValue": 1,
+    "phaseValue": 3,
+    "scheduledAtUtc": "2026-11-20T13:00:00Z",
+    "battingTeamId": null,
+    "sportId": "pickleball-sport-guid",
+    "homeTeamId": "home-team-guid",
+    "awayTeamId": "away-team-guid",
+    "homeTeamName": "NV P1",
+    "awayTeamName": "NV P2"
+  },
+  "score": {
+    "currentSet": 2,
+    "isLive": true,
+    "sets": [
+      { "setNumber": 1, "teamA": 11, "teamB": 8 },
+      { "setNumber": 2, "teamA": 5, "teamB": 3 },
+      { "setNumber": 3, "teamA": 0, "teamB": 0 }
+    ]
+  }
+}
+
+PUT uses the same full payload for Badminton. Update score.sets after point
+entry and update fixture.phase/currentSet when the next game is made live.
+The response body is the complete updated resource.
+
+Frontend integration map
+------------------------
+
+Use one API service module (for example src/services/racquetMatchService.ts)
+for these requests. Components should call that service rather than accessing
+browser storage directly. Keep the existing fixture API for the canonical
+fixture list; the racquet-match resource supplies the locally maintained
+Badminton/Pickleball status, phase, and score values.
+
+Frontend location                         API call and purpose
+----------------------------------------  ------------------------------------
+src/components/FixtureList/FixtureList.tsx
+  Load saved racquet data with GET /api/racquet-matches and merge it with
+  GET /api/fixtures/all.
+  On first local-scoring save, POST /api/racquet-matches.
+  On later status, phase, or score changes, PUT
+  /api/racquet-matches/{fixtureId}.
+  On fixture deletion, call DELETE /api/racquet-matches/{fixtureId} before
+  DELETE /api/fixtures/{fixtureId}; the racquet DELETE is safe when no racquet
+  record exists.
+
+src/components/FeedingMatch/FeedingMatch.tsx
+  Merge GET /api/racquet-matches?status=Live with GET /api/fixtures/live.
+  Read score and phase from each returned RacquetMatch.
+
+src/Pages/Admin/Commentary.tsx
+src/components/Commentary/BadmintonScoreEntry.tsx
+  After selecting a Badminton or Pickleball fixture, call
+  GET /api/racquet-matches/{fixtureId}. If it returns 404, POST the initialized
+  record with three 0/0 games. After each point, PUT the complete resource.
+  FixtureList phase changes also PUT the complete resource. Do not send a score
+  update unless the fixture status is Live and the selected game matches
+  fixture.phase.
+
+src/Pages/NVianDashboard.tsx
+  Call GET /api/racquet-matches and merge results with canonical fixtures.
+  Refresh the displayed card data after successful POST/PUT/DELETE responses or
+  when returning from match details.
+
+src/Pages/MatchDetailsPage/MatchDetailsPage.tsx
+src/components/MatchDetails/BadmintonMatchDetailsView.tsx
+  Call GET /api/racquet-matches/{fixtureId} to display the saved phase and all
+  three game scores for either sport.
+
+After a successful POST/PUT/DELETE, update the active component state from the
+response and invalidate or refresh the fixture list, Feeding Match selector,
+dashboard cards, and match details that reference that fixture. Do not depend
+on browser-only custom events for cross-view synchronization.
+
+Local-storage call replacement
+------------------------------
+
+Current frontend storage call                      Replacement endpoint
+-------------------------------------------------  -------------------------------------------
+getTemporaryBadmintonFixtureDetails(fixtureId)     GET /api/racquet-matches/{fixtureId}
+getTemporaryBadmintonScore(fixtureId)              GET /api/racquet-matches/{fixtureId}
+getAllTemporaryBadmintonFixtureDetails()           GET /api/racquet-matches
+saveTemporaryBadmintonFixtureDetails(...)          POST /api/racquet-matches for a new record;
+                                                   PUT /api/racquet-matches/{fixtureId} after
+                                                   the record has been created
+saveTemporaryBadmintonScore(...)                   PUT /api/racquet-matches/{fixtureId}
+Remove a saved racquet match                       DELETE /api/racquet-matches/{fixtureId}
+
+The local fixture and score records currently use these key patterns:
+  crickbuzz:badminton-fixture:v1:{fixtureId}
+  crickbuzz:badminton-score:v1:{fixtureId}
+The API uses one combined RacquetMatch resource per fixtureId instead.
+
+Operation flow
+--------------
+1. Load a fixture from the existing fixture API and fetch its racquet record
+   with GET /api/racquet-matches/{fixtureId}.
+2. If no racquet record exists, initialize three 0/0 games and POST the
+   complete payload to /api/racquet-matches.
+3. Use PUT /api/racquet-matches/{fixtureId} for score points and fixture phase
+   changes. Send the entire resource so status, phase, currentSet, isLive, and
+   all game scores remain consistent.
+4. Use GET /api/racquet-matches for dashboard/list synchronization.
+5. Use DELETE /api/racquet-matches/{fixtureId} when removing the racquet record.
+
+Integration status
+------------------
+The frontend in this repository currently still uses local browser storage for
+these records. Do not remove that implementation until the API above is
+available. Once the backend is deployed, replace the local-storage service
+calls at the locations above with the corresponding exact endpoint calls and
+migrate existing browser records before removing the compatibility path.
+For each fixtureId, read both existing keys, combine valid fixture and score
+data, POST the RacquetMatch, GET it back to verify, and only then remove those
+two racquet keys. Do not clear authentication, commentary, selected-player, or
+other unrelated browser storage.
+
+Scoring rules to enforce
+------------------------
+
+Badminton:
+  - Best of three games.
+  - A game is won at 21 or more points with a lead of at least two.
+  - 30 is the hard maximum; at 29-29 the next point wins.
+
+Pickleball:
+  - Best of three games, matching the current frontend game flow.
+  - A game is won at 11 or more points with a lead of at least two.
+  - There is no fixed maximum; play continues until a two-point lead exists.
+
+Both sports:
+  - phaseValue 2, 3, and 5 correspond to Set1, Set2, and Set3.
+  - statusValue 0, 1, 2, 3, and 4 correspond to Scheduled, Live, Completed,
+    Postponed, and Cancelled.
+  - Only score the game whose number matches score.currentSet and the live
+    fixture phase. Reject score changes for a non-live game or completed match.
+  - sets must contain exactly one entry for setNumber 1, 2, and 3. Scores are
+    non-negative integers.
+
+Suggested implementation sequence
+----------------------------------
+1. Implement and test these routes in the backend.
+2. Configure VITE_API_BASE_URL to point to that backend.
+3. Replace the frontend local fixture/score service calls using the integration
+   map above.
+4. Migrate existing browser-local records before removing localStorage support.

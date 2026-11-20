@@ -4,6 +4,17 @@ import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpda
 import { fixtureService, type Fixture } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
 import Loader from "../Loader/Loader";
+import {
+  BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+  getTemporaryBadmintonScore,
+  getTemporaryBadmintonScoreStorageKey,
+  type TemporaryBadmintonScore,
+} from "../../services/temporaryBadmintonScoreService";
+import {
+  getTemporaryBadmintonFixtureDetails,
+  saveTemporaryBadmintonFixtureDetails,
+} from "../../services/temporaryBadmintonFixtureService";
+import { isLocalRacquetSport } from "../../utils/localRacquetSports";
 
 type EditableFixture = Omit<Fixture, "battingTeamId"> & {
   homeOvers?: string;
@@ -75,6 +86,60 @@ function FixtureListItem({
     (fixture as unknown as { awayTeamId?: string }).awayTeamId ?? "";
 
   const isCricket = fixture.sport?.toLowerCase() === "cricket";
+  const isLocalRacquet = isLocalRacquetSport(fixture.sport);
+  const [temporaryScore, setTemporaryScore] =
+    useState<TemporaryBadmintonScore | null>(null);
+  const [temporaryScoreError, setTemporaryScoreError] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!isLocalRacquet) {
+      setTemporaryScore(null);
+      setTemporaryScoreError(null);
+      return;
+    }
+
+    const refreshTemporaryScore = () => {
+      try {
+        setTemporaryScore(getTemporaryBadmintonScore(fixture.id));
+        setTemporaryScoreError(null);
+      } catch (error: unknown) {
+        console.error("Failed to read local racquet fixture score", error);
+        setTemporaryScore(null);
+        setTemporaryScoreError(
+          error instanceof Error
+            ? error.message
+            : "Unable to read the local racquet score.",
+        );
+      }
+    };
+
+    const handleLocalScoreChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ fixtureId: string }>).detail;
+      if (detail?.fixtureId === fixture.id) refreshTemporaryScore();
+    };
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === getTemporaryBadmintonScoreStorageKey(fixture.id)) {
+        refreshTemporaryScore();
+      }
+    };
+
+    refreshTemporaryScore();
+    window.addEventListener(
+      BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+      handleLocalScoreChange,
+    );
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener(
+        BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+        handleLocalScoreChange,
+      );
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [fixture.id, isLocalRacquet]);
 
   return (
     <div key={fixture.id}>
@@ -114,7 +179,13 @@ function FixtureListItem({
                   <option value={3}>Second Half</option>
                   <option value={5}>Shootout</option>
                 </>
-              ) : (
+              ) : isLocalRacquetSport(fixture.sport) ? (
+                <>
+                  <option value={2}>Set 1</option>
+                  <option value={3}>Set 2</option>
+                  <option value={5}>Set 3</option>
+                </>
+              ): (
                 <>
                   <option value={0}>First Innings</option>
                   <option value={1}>Second Innings</option>
@@ -175,7 +246,11 @@ function FixtureListItem({
           </div>
         </div>
       ) : (
-        <div className="fixture-item">
+        <div
+          className={`fixture-item ${
+            isLocalRacquet ? "fixture-item--racquet" : ""
+          }`}
+        >
           <div className="fixture-left">
             <span className="sport-badge">{fixture.sport}</span>
 
@@ -190,17 +265,41 @@ function FixtureListItem({
               </p>
             </div>
 
-            <div className="fixture-score">
-              <strong>
-                {`${realtime?.homeScore ?? fixture.homeScore}/${
-                  realtime?.homeWickets ?? fixture.homeWickets ?? 0
-                } (${realtime?.homeOvers ?? fixture.homeOvers ?? "0.0"})`}
-              </strong>
-              <span className="fixture-score-meta">
-                &nbsp;• {realtime?.awayScore ?? fixture.awayScore}/
-                {realtime?.awayWickets ?? fixture.awayWickets ?? 0} (
-                {realtime?.awayOvers ?? fixture.awayOvers ?? "0.0"})
-              </span>
+            <div
+              className={
+                isLocalRacquet
+                  ? "fixture-score fixture-score--racquet"
+                  : "fixture-score"
+              }
+            >
+              {isLocalRacquet && temporaryScoreError ? (
+                <strong className="fixture-score-error">
+                  {temporaryScoreError}
+                </strong>
+              ) : isLocalRacquet &&
+                (temporaryScore ||
+                  fixture.status.toLowerCase() === "scheduled") ? (
+                <strong>
+                  {temporaryScore
+                    ? temporaryScore.sets
+                        .map((set) => `${set.teamA}/${set.teamB}`)
+                        .join(" - ")
+                    : "0/0 - 0/0 - 0/0"}
+                </strong>
+              ) : (
+                <>
+                  <strong>
+                    {`${realtime?.homeScore ?? fixture.homeScore}/${
+                      realtime?.homeWickets ?? fixture.homeWickets ?? 0
+                    } (${realtime?.homeOvers ?? fixture.homeOvers ?? "0.0"})`}
+                  </strong>
+                  <span className="fixture-score-meta">
+                    &nbsp;• {realtime?.awayScore ?? fixture.awayScore}/
+                    {realtime?.awayWickets ?? fixture.awayWickets ?? 0} (
+                    {realtime?.awayOvers ?? fixture.awayOvers ?? "0.0"})
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -239,15 +338,78 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
   async function loadFixtures() {
     try {
       const data = await fixtureService.getLiveFixtures();
-      setFixtures(
-        data.map((f) => ({
+      let localDetailsError: unknown = null;
+      let localDetailsEnriched = false;
+      const loadedFixtures = data.map((f) => {
+        const phaseValue = getPhaseValue(f.phase);
+        const fixture: EditableFixture = {
           ...f,
           statusValue: getStatusValue(f.status),
-          phaseValue: getPhaseValue(f.phase),
+          phaseValue:
+            isLocalRacquetSport(f.sport) && ![2, 3, 5].includes(phaseValue)
+              ? 2
+              : phaseValue,
           battingTeamId:
             (f as unknown as { battingTeamId?: string | null }).battingTeamId || null,
           originalStatusValue: getStatusValue(f.status),
-        })),
+        };
+
+        if (!isLocalRacquetSport(f.sport)) return fixture;
+
+        try {
+          const localDetails = getTemporaryBadmintonFixtureDetails(f.id);
+          if (!localDetails) return fixture;
+
+          const enrichedDetails = {
+            ...localDetails,
+            sport: localDetails.sport ?? f.sport,
+            sportId: localDetails.sportId ?? f.sportId,
+            homeTeamId: localDetails.homeTeamId ?? f.homeTeamId,
+            awayTeamId: localDetails.awayTeamId ?? f.awayTeamId,
+            homeTeamName: localDetails.homeTeamName ?? f.homeTeamName,
+            awayTeamName: localDetails.awayTeamName ?? f.awayTeamName,
+          };
+          if (
+            !localDetails.sport ||
+            !localDetails.sportId ||
+            !localDetails.homeTeamId ||
+            !localDetails.awayTeamId ||
+            !localDetails.homeTeamName ||
+            !localDetails.awayTeamName
+          ) {
+            saveTemporaryBadmintonFixtureDetails(f.id, enrichedDetails);
+            localDetailsEnriched = true;
+          }
+
+          return {
+            ...fixture,
+            ...enrichedDetails,
+            originalStatusValue: localDetails.statusValue,
+          };
+        } catch (error: unknown) {
+          console.error("Failed to load local racquet fixture details", error);
+          if (!localDetailsError) localDetailsError = error;
+          return fixture;
+        }
+      });
+
+      setFixtures(loadedFixtures);
+      if (localDetailsEnriched) {
+        window.dispatchEvent(new CustomEvent("crickbuzz-live-feeds-refresh"));
+      }
+      if (localDetailsError) {
+        showError(
+          "Local data error",
+          localDetailsError instanceof Error
+            ? localDetailsError.message
+            : "Unable to load local racquet fixture details.",
+        );
+      }
+    } catch (error: unknown) {
+      console.error("Failed to load fixtures", error);
+      showError(
+        "Error",
+        error instanceof Error ? error.message : "Unable to load fixtures.",
       );
     } finally {
       setLoading(false);
@@ -271,22 +433,58 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
     }
   };
 
-  const getPhaseValue = (phase: string) => {
-    switch (phase) {
-      case "FirstInnings":
+  const getPhaseValue = (phase: string | null | undefined) => {
+    const normalizedPhase = (phase ?? "").toLowerCase().replace(/[\s_-]/g, "");
+    switch (normalizedPhase) {
+      case "firstinnings":
         return 0;
-      case "SecondInnings":
+      case "secondinnings":
         return 1;
-      case "FirstHalf":
+      case "firsthalf":
         return 2;
-      case "SecondHalf":
+      case "secondhalf":
         return 3;
-      case "ExtraTime":
+      case "extratime":
         return 4;
-      case "PenaltyShootout":
+      case "penaltyshootout":
+        return 5;
+      case "set1":
+      case "firstset":
+        return 2;
+      case "set2":
+      case "secondset":
+        return 3;
+      case "set3":
+      case "thirdset":
         return 5;
       default:
         return 0;
+    }
+  };
+
+  const getStatusName = (statusValue: number) => {
+    switch (statusValue) {
+      case 1:
+        return "Live";
+      case 2:
+        return "Completed";
+      case 3:
+        return "Postponed";
+      case 4:
+        return "Cancelled";
+      default:
+        return "Scheduled";
+    }
+  };
+
+  const getRacquetPhaseName = (phaseValue: number) => {
+    switch (phaseValue) {
+      case 3:
+        return "Set2";
+      case 5:
+        return "Set3";
+      default:
+        return "Set1";
     }
   };
 
@@ -311,6 +509,52 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
   };
 
   const handleSave = async (fixture: EditableFixture) => {
+    if (isLocalRacquetSport(fixture.sport)) {
+      try {
+        const localDetails = {
+          status: getStatusName(fixture.statusValue),
+          phase: getRacquetPhaseName(fixture.phaseValue),
+          statusValue: fixture.statusValue,
+          phaseValue: fixture.phaseValue,
+          scheduledAtUtc: fixture.scheduledAtUtc,
+          battingTeamId: fixture.battingTeamId ?? null,
+          sport: fixture.sport,
+          sportId: fixture.sportId,
+          homeTeamId: fixture.homeTeamId,
+          awayTeamId: fixture.awayTeamId,
+          homeTeamName: fixture.homeTeamName,
+          awayTeamName: fixture.awayTeamName,
+        };
+        saveTemporaryBadmintonFixtureDetails(fixture.id, localDetails);
+        setFixtures((prev) =>
+          prev.map((currentFixture) =>
+            currentFixture.id === fixture.id
+              ? {
+                  ...currentFixture,
+                  ...localDetails,
+                  originalStatusValue: fixture.statusValue,
+                }
+              : currentFixture,
+          ),
+        );
+        await showSuccess(
+          "Saved locally",
+          `${fixture.sport} fixture details are saved in this browser.`,
+        );
+        window.dispatchEvent(new CustomEvent("crickbuzz-live-feeds-refresh"));
+        setEditingId(null);
+      } catch (error: unknown) {
+        console.error("Failed to save local racquet fixture details", error);
+        showError(
+          "Error",
+          error instanceof Error
+            ? error.message
+            : "Unable to save the racquet fixture details locally.",
+        );
+      }
+      return;
+    }
+
     try {
       const battingTeamId =
         fixture.sport?.toLowerCase() === "football"

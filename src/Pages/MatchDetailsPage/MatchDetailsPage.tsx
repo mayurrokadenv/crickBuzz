@@ -31,7 +31,13 @@ import type {
 import FixtureScoreCard, {
   type FixtureScorecard,
 } from "../../components/MatchDetails/FixtureScorecard";
+import BadmintonMatchDetailsView from "../../components/MatchDetails/BadmintonMatchDetailsView";
 import Loader from "../../components/Loader/Loader";
+import {
+  getTemporaryBadmintonFixtureDetails,
+  type TemporaryBadmintonFixtureDetails,
+} from "../../services/temporaryBadmintonFixtureService";
+import { isLocalRacquetSport } from "../../utils/localRacquetSports";
 
 function MatchDetailsPage() {
   const { matchId } = useParams();
@@ -58,6 +64,10 @@ function MatchDetailsPage() {
 
   const [fixtureScorecard, setFixtureScorecard] =
     useState<FixtureScorecard | null>(null);
+  const [storedBadmintonFixture, setStoredBadmintonFixture] = useState<{
+    fixtureId: string;
+    details: TemporaryBadmintonFixtureDetails;
+  } | null>(null);
 
   const requestedTab = searchParams.get("tab");
   const initialTab: MatchTab =
@@ -100,6 +110,23 @@ function MatchDetailsPage() {
   const [fixtureScorecardError, setFixtureScorecardError] = useState<
     string | null
   >(null);
+
+  useEffect(() => {
+    if (source !== "fixture" || !matchId) {
+      setStoredBadmintonFixture(null);
+      return;
+    }
+
+    try {
+      const details = getTemporaryBadmintonFixtureDetails(matchId);
+      setStoredBadmintonFixture(
+        details ? { fixtureId: matchId, details } : null,
+      );
+    } catch (error: unknown) {
+      console.error("Failed to load local racquet fixture details", error);
+      setStoredBadmintonFixture(null);
+    }
+  }, [matchId, source]);
 
   // ---------- LOAD MATCH DETAILS (initial request) ----------
   useEffect(() => {
@@ -227,6 +254,26 @@ function MatchDetailsPage() {
   }, [matchId, source]); // No dependency on activeTab – loads on mount
 
   // ---------- PAGE STATES ----------
+  const localFixture =
+    storedBadmintonFixture && storedBadmintonFixture.fixtureId === matchId
+      ? storedBadmintonFixture.details
+      : null;
+  if (
+    source === "fixture" &&
+    localFixture &&
+    isLocalRacquetSport(localFixture.sport)
+  ) {
+    return (
+      <BadmintonMatchDetailsView
+        fixtureId={matchId ?? ""}
+        fixture={fixtureScorecard}
+        localFixture={localFixture}
+        header={matchDetails?.header ?? null}
+        loading={fixtureScorecardLoading}
+      />
+    );
+  }
+
   if (loading) {
     return <Loader label="Loading match details..." fullWidth />;
   }
@@ -238,6 +285,21 @@ function MatchDetailsPage() {
   if (!matchDetails) {
     return (
       <div className="match-details-page__state">Match details not found.</div>
+    );
+  }
+
+  if (
+    source === "fixture" &&
+    isLocalRacquetSport(matchDetails.header.matchFormat)
+  ) {
+    return (
+      <BadmintonMatchDetailsView
+        fixtureId={matchId ?? ""}
+        fixture={fixtureScorecard}
+        localFixture={localFixture}
+        header={matchDetails.header}
+        loading={fixtureScorecardLoading}
+      />
     );
   }
 

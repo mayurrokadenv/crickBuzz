@@ -1,0 +1,258 @@
+.badminton-score-entry {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e1e5eb;
+  border-radius: 12px;
+  background: #fff;
+  color: #202a38;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.06);
+}
+
+.badminton-score-entry__header,
+.badminton-score-entry__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.badminton-score-entry__header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e9edf2;
+}
+
+.badminton-score-entry__header h2,
+.badminton-score-entry__games h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.badminton-score-entry__header p {
+  margin: 8px 0 0;
+  color: #7a8492;
+  font-size: 13px;
+}
+
+.badminton-score-entry__badge,
+.badminton-score-entry__in-progress,
+.badminton-score-entry__match-complete {
+  border-radius: 14px;
+  padding: 5px 10px;
+  background: #edf1f5;
+  color: #687385;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badminton-score-entry__badge--live,
+.badminton-score-entry__in-progress {
+  background: #dcf5e6;
+  color: #148548;
+}
+
+.badminton-score-entry__game-selector {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 0;
+}
+
+.badminton-score-entry__rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f3f6f9;
+  color: #536174;
+  font-size: 12px;
+}
+
+.badminton-score-entry__rules h3 {
+  flex-basis: 100%;
+  margin: 0;
+  color: #273244;
+  font-size: 13px;
+}
+
+.badminton-score-entry__game-selector label {
+  color: #697586;
+  font-size: 13px;
+}
+
+.badminton-score-entry__game-selector select {
+  min-width: 120px;
+  border: 1px solid #d5dce5;
+  border-radius: 7px;
+  background: #fff;
+  color: #273244;
+  padding: 7px 10px;
+  font: inherit;
+}
+
+.badminton-score-entry__players {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e9edf2;
+}
+
+.badminton-score-entry__player {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.badminton-score-entry__player h3 {
+  margin: 10px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+}
+
+.badminton-score-entry__player strong {
+  font-size: 27px;
+  line-height: 1;
+}
+
+.badminton-score-entry__player > span {
+  color: #7a8492;
+  font-size: 12px;
+}
+
+.badminton-score-entry__player-actions {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+}
+
+.badminton-score-entry__player-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.badminton-score-entry__player-name-points {
+  overflow-wrap: anywhere;
+  color: #697586;
+  font-size: 12px;
+  padding-left: 4px;
+}
+
+.badminton-score-entry__player button {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 24px;
+  background: #0aa34a;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.badminton-score-entry__player button:hover:not(:disabled) {
+  background: #07863c;
+}
+
+.badminton-score-entry__player button:disabled {
+  background: #aab4bf;
+  cursor: not-allowed;
+}
+
+.badminton-score-entry__games {
+  padding-top: 18px;
+}
+
+.badminton-score-entry__table-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+  border: 1px solid #e4e9ef;
+  border-radius: 8px;
+}
+
+.badminton-score-entry__games table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.badminton-score-entry__games th,
+.badminton-score-entry__games td {
+  padding: 10px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.badminton-score-entry__games thead th {
+  color: #788394;
+  font-size: 11px;
+}
+
+.badminton-score-entry__games tbody tr:last-child th,
+.badminton-score-entry__games tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.badminton-score-entry__current-game {
+  background: #effaf4;
+}
+
+.badminton-score-entry__footer {
+  margin-top: 14px;
+  color: #778191;
+  font-size: 12px;
+}
+
+.badminton-score-entry__match-complete {
+  background: #e8edf2;
+  color: #596575;
+}
+
+.badminton-score-entry__notice,
+.badminton-score-entry__error {
+  margin: 12px 0 0;
+  color: #7b8490;
+  font-size: 12px;
+}
+
+.badminton-score-entry__error {
+  color: #b42318;
+}
+
+.badminton-score-entry__empty {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  padding: 20px;
+  border: 1px solid #e1e5eb;
+  border-radius: 12px;
+  background: #fff;
+  color: #687385;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .badminton-score-entry {
+    padding: 14px;
+  }
+
+  .badminton-score-entry__players {
+    gap: 10px;
+  }
+
+  .badminton-score-entry__player h3 {
+    font-size: 14px;
+  }
+
+  .badminton-score-entry__games table {
+    min-width: 420px;
+  }
+}

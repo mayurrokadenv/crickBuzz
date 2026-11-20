@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import "./ScoreCard.css";
 import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 import { useCommentaryFeed } from "../../hooks/useCommentaryFeed";
+import type { FixtureSetScoreDto } from "../types/FixtureDetails";
 
 export type CommentaryEntry = {
   id: string;
@@ -94,6 +95,8 @@ export type FixtureScorecard = {
   awayScore: number;
   awayWickets: number;
   awayOvers: string;
+  currentSet?: number;
+  sets?: FixtureSetScoreDto[];
 
   totalOvers: string;
 

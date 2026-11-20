@@ -23,5 +23,7 @@ export function mapFixtureToMatchCard(fixture: Fixture): MatchCardModel {
     homeOvers: fixture.homeOvers,
     awayOvers: fixture.awayOvers,
     overs: null,
+    currentSet: fixture.currentSet,
+    sets: fixture.sets,
   };
 }

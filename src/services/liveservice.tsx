@@ -19,6 +19,7 @@ export interface LiveMatchResponse {
 
 export interface FeedingMatch {
   id: number;
+  fixtureId?: string;
   sport: string;
   team1: string;
   team2: string;

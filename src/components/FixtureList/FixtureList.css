@@ -115,6 +115,16 @@
     gap: 14px;
 }
 
+.fixture-item--racquet .fixture-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.fixture-item--racquet .fixture-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .sport-badge {
     background: #5a2ea6;
     color: white;
@@ -147,6 +157,20 @@
     font-size: 16px;
     color: #ffffff;
     font-weight: 700;
+}
+
+.fixture-score--racquet {
+    flex: 0 0 250px;
+    width: 250px;
+    max-width: 250px;
+    text-align: right;
+    transform: translateX(-10px);
+    white-space: nowrap;
+}
+
+.fixture-score-error {
+    color: #ffb4ab;
+    font-size: 12px;
 }
 
 .icon-btn {

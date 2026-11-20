@@ -21,8 +21,16 @@ export interface FixtureDetailsDto {
   commentary: CommentaryDto[];
   topPerformers: TopPerformerDto[];
   scorecards?: Scorecard[];
+  currentSet?: number;
+  sets?: FixtureSetScoreDto[];
   totalOvers?: string;
   sportId: string;
+}
+
+export interface FixtureSetScoreDto {
+  setNumber: number;
+  teamA: number;
+  teamB: number;
 }
 
 export interface CommentaryDto {

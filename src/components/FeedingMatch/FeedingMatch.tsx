@@ -3,9 +3,22 @@ import type { FeedingMatchs } from "../../services/match.types";
 import { getLiveMatches } from "../../services/liveservice";
 import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 import Loader from "../Loader/Loader";
+import {
+  getAllTemporaryBadmintonFixtureDetails,
+} from "../../services/temporaryBadmintonFixtureService";
+import {
+  BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+  getTemporaryBadmintonScore,
+} from "../../services/temporaryBadmintonScoreService";
+import { isLocalRacquetSport } from "../../utils/localRacquetSports";
 import "./FeedingMatch.css";
 
 const FEEDING_MATCH_REFRESH_EVENT = "crickbuzz-live-feeds-refresh";
+
+function getLocalRacquetScore(fixtureId: string) {
+  const score = getTemporaryBadmintonScore(fixtureId);
+  return score?.sets.map((set) => `${set.teamA}/${set.teamB}`).join(" - ") ?? null;
+}
 
 interface FeedingMatchProps {
   onMatchSelect?: (match: FeedingMatchs) => void;
@@ -68,11 +81,107 @@ const FeedingMatchComponent = ({
     };
   }, []);
 
+  useEffect(() => {
+    const handleLocalScoreChange = (event: Event) => {
+      const fixtureId = (
+        event as CustomEvent<{ fixtureId: string }>
+      ).detail?.fixtureId;
+      if (!fixtureId) return;
+
+      try {
+        const score =
+          getLocalRacquetScore(fixtureId) ?? "0/0 - 0/0 - 0/0";
+        setFeedingMatches((currentMatches) =>
+          currentMatches.map((match) =>
+            match.fixtureId === fixtureId ? { ...match, score } : match,
+          ),
+        );
+      } catch (error: unknown) {
+        console.error("Failed to load local racquet match score", error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load local racquet match score.",
+        );
+      }
+    };
+
+    window.addEventListener(
+      BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+      handleLocalScoreChange,
+    );
+    return () => {
+      window.removeEventListener(
+        BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+        handleLocalScoreChange,
+      );
+    };
+  }, []);
+
   const fetchLiveMatches = async () => {
     try {
       setLoading(true);
       setError(null);
       const matches = await getLiveMatches();
+      let savedFixtures: ReturnType<
+        typeof getAllTemporaryBadmintonFixtureDetails
+      > = [];
+      try {
+        savedFixtures = getAllTemporaryBadmintonFixtureDetails();
+      } catch (error: unknown) {
+        console.error("Failed to load local racquet fixtures", error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load local racquet fixtures.",
+        );
+      }
+      let localMatchId = -1;
+
+      for (const savedFixture of savedFixtures) {
+        const { fixtureId, details } = savedFixture;
+        const existingIndex = matches.findIndex(
+          (match) => match.fixtureId === fixtureId,
+        );
+        const existingMatch = existingIndex >= 0 ? matches[existingIndex] : null;
+        const team1 = details.homeTeamName || existingMatch?.team1;
+        const team2 = details.awayTeamName || existingMatch?.team2;
+        const hasLocalMatchDetails =
+          details.statusValue === 1 && team1 && team2;
+
+        if (!existingMatch && !hasLocalMatchDetails) continue;
+
+        let score = existingMatch?.score ?? "0/0 - 0/0 - 0/0";
+        try {
+          score = getLocalRacquetScore(fixtureId) ?? score;
+        } catch (error: unknown) {
+          console.error("Failed to load local racquet match score", error);
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load local racquet match score.",
+          );
+          score = "Score unavailable";
+        }
+
+        const localMatch: FeedingMatchs = {
+          id: existingMatch?.id ?? localMatchId--,
+          fixtureId,
+          sport: details.sport || existingMatch?.sport || "Badminton",
+          team1: team1 ?? "",
+          team2: team2 ?? "",
+          score,
+          stage: details.status,
+          progress: details.phase,
+        };
+
+        if (existingIndex >= 0) {
+          matches[existingIndex] = localMatch;
+        } else {
+          matches.push(localMatch);
+        }
+      }
+
       if (matches.length > 0) {
         console.log("FeedingMatch: Fetched matches:", matches);
         setFeedingMatches(matches);
@@ -106,7 +215,8 @@ const FeedingMatchComponent = ({
 
   const { scoreByMatch } = useScoreUpdateFeed(selectedMatch?.fixtureId ?? "");
   console.log("FeedingMatch: Score updates in FeedingMatch:====================>", scoreByMatch);
-  const realtime = selectedMatch?.fixtureId
+  const isSelectedLocalRacquet = isLocalRacquetSport(selectedMatch?.sport);
+  const realtime = selectedMatch?.fixtureId && !isSelectedLocalRacquet
     ? getScoreForFixture(scoreByMatch, selectedMatch.fixtureId)
     : undefined;
 
@@ -163,6 +273,10 @@ const FeedingMatchComponent = ({
             {feedingMatches.map((match) => (
               <option key={match.id} value={match.id}>
                 {match.sport}: {match.team1} vs {match.team2}
+                {isLocalRacquetSport(match.sport) &&
+                match.stage.toLowerCase() !== "live"
+                  ? ` • ${match.stage}`
+                  : ""}
               </option>
             ))}
           </select>
