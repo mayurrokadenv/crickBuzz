@@ -139,10 +139,30 @@
 }
 
 .badminton-score-entry__player-name-points {
-  overflow-wrap: anywhere;
-  color: #697586;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   padding-left: 4px;
+}
+
+.badminton-score-entry__player-name {
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.badminton-score-entry__player-points {
+  flex-shrink: 0;
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
 }
 
 .badminton-score-entry__player button {

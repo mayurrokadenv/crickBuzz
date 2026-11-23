@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import "./FixtureList.css";
 import useScoreUpdateFeed, { getScoreForFixture } from "../../hooks/useScoreUpdateFeed";
 import { fixtureService, type Fixture } from "../../services/fixturesservice";
@@ -15,6 +15,7 @@ import {
   saveTemporaryBadmintonFixtureDetails,
 } from "../../services/temporaryBadmintonFixtureService";
 import { isLocalRacquetSport } from "../../utils/localRacquetSports";
+import { loadRacquetMatches } from "../../services/racquetMatchService";
 
 type EditableFixture = Omit<Fixture, "battingTeamId"> & {
   homeOvers?: string;
@@ -52,6 +53,20 @@ function FixtureListItem({
 }) {
   const canEdit = true;
   const hideActions = false;
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+
+  const onSaveClick = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      await handleSave(fixture);
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+  };
 
   const { scoreByMatch } = useScoreUpdateFeed(String(fixture.id));
 
@@ -236,12 +251,20 @@ function FixtureListItem({
           </div>
 
           <div className="actions">
-            <button className="cancel" onClick={() => setEditingId(null)}>
+            <button
+              className="cancel"
+              onClick={() => setEditingId(null)}
+              disabled={isSaving}
+            >
               Cancel
             </button>
 
-            <button className="save" onClick={() => handleSave(fixture)}>
-              Save
+            <button
+              className="save"
+              onClick={onSaveClick}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save"}
             </button>
           </div>
         </div>
@@ -338,6 +361,10 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
   async function loadFixtures() {
     try {
       const data = await fixtureService.getLiveFixtures();
+      // Badminton/Pickleball status and phase are saved in /api/racquet-matches.
+      await loadRacquetMatches().catch((error: unknown) =>
+        console.error("Failed to load racquet matches", error),
+      );
       let localDetailsError: unknown = null;
       let localDetailsEnriched = false;
       const loadedFixtures = data.map((f) => {
@@ -377,7 +404,9 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
             !localDetails.homeTeamName ||
             !localDetails.awayTeamName
           ) {
-            saveTemporaryBadmintonFixtureDetails(f.id, enrichedDetails);
+            void saveTemporaryBadmintonFixtureDetails(f.id, enrichedDetails).catch(
+              (error: unknown) => console.error("Failed to save racquet fixture details", error),
+            );
             localDetailsEnriched = true;
           }
 
@@ -525,7 +554,7 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
           homeTeamName: fixture.homeTeamName,
           awayTeamName: fixture.awayTeamName,
         };
-        saveTemporaryBadmintonFixtureDetails(fixture.id, localDetails);
+        await saveTemporaryBadmintonFixtureDetails(fixture.id, localDetails);
         setFixtures((prev) =>
           prev.map((currentFixture) =>
             currentFixture.id === fixture.id
@@ -537,19 +566,17 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
               : currentFixture,
           ),
         );
-        await showSuccess(
-          "Saved locally",
-          `${fixture.sport} fixture details are saved in this browser.`,
-        );
+        await showSuccess("Success", `${fixture.sport} fixture updated successfully.`);
         window.dispatchEvent(new CustomEvent("crickbuzz-live-feeds-refresh"));
         setEditingId(null);
       } catch (error: unknown) {
-        console.error("Failed to save local racquet fixture details", error);
+        console.error("Failed to save racquet fixture details", error);
+        loadFixtures();
         showError(
           "Error",
           error instanceof Error
             ? error.message
-            : "Unable to save the racquet fixture details locally.",
+            : "Unable to save the racquet fixture details.",
         );
       }
       return;

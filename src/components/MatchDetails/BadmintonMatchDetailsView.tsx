@@ -14,6 +14,7 @@ import {
   type TemporaryBadmintonScore,
 } from "../../services/temporaryBadmintonScoreService";
 import Loader from "../Loader/Loader";
+import { getTeams, type Player } from "../../services/TeamService";
 import { getLocalRacquetSport } from "../../utils/localRacquetSports";
 import "./BadmintonMatchDetailsView.css";
 
@@ -73,7 +74,13 @@ function BadmintonMatchDetailsView({
   const [localScoreError, setLocalScoreError] = useState<string | null>(null);
   const [savedFixture, setSavedFixture] =
     useState<TemporaryBadmintonFixtureDetails | null>(localFixture);
+  const [homeTeamPlayers, setHomeTeamPlayers] = useState<Player[]>([]);
+  const [awayTeamPlayers, setAwayTeamPlayers] = useState<Player[]>([]);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [viewGame, setViewGame] = useState<number | null>(null);
   const currentFixture = fixture?.id === fixtureId ? fixture : null;
+  const homeTeamId = savedFixture?.homeTeamId ?? currentFixture?.homeTeamId;
+  const awayTeamId = savedFixture?.awayTeamId ?? currentFixture?.awayTeamId;
   const currentHeader = header?.matchId === fixtureId ? header : null;
 
   useEffect(() => {
@@ -132,6 +139,44 @@ function BadmintonMatchDetailsView({
       );
     };
   }, [fixtureId]);
+
+  useEffect(() => {
+    if (!homeTeamId && !awayTeamId) return;
+    let ignore = false;
+    setRosterError(null);
+    getTeams()
+      .then((teams) => {
+        if (ignore) return;
+        setHomeTeamPlayers(
+          teams.find((team) => team.id === homeTeamId)?.players ?? [],
+        );
+        setAwayTeamPlayers(
+          teams.find((team) => team.id === awayTeamId)?.players ?? [],
+        );
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to load racquet team rosters", error);
+        if (!ignore) {
+          setRosterError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load player names.",
+          );
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [homeTeamId, awayTeamId]);
+
+  useEffect(() => {
+    if (viewGame === null) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setViewGame(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [viewGame]);
 
   const homeTeamName =
     savedFixture?.homeTeamName ??
@@ -296,6 +341,7 @@ function BadmintonMatchDetailsView({
                   <th>{homeTeamName}</th>
                   <th>{awayTeamName}</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -328,6 +374,15 @@ function BadmintonMatchDetailsView({
                       <td>{teamA}</td>
                       <td>{teamB}</td>
                       <td>{gameStatus}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="badminton-match-details__view-button"
+                          onClick={() => setViewGame(setNumber)}
+                        >
+                          View Score
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -335,6 +390,79 @@ function BadmintonMatchDetailsView({
             </table>
           </div>
         </section>
+
+        {viewGame !== null &&
+          (() => {
+            const gameScore = sets.find((set) => set.setNumber === viewGame);
+            const playerPoints = localScore?.playerPoints ?? {};
+            const teams = [
+              {
+                name: homeTeamName,
+                total: gameScore?.teamA ?? 0,
+                players: homeTeamPlayers,
+              },
+              {
+                name: awayTeamName,
+                total: gameScore?.teamB ?? 0,
+                players: awayTeamPlayers,
+              },
+            ];
+            return (
+              <div
+                className="badminton-match-details__modal-backdrop"
+                onClick={() => setViewGame(null)}
+              >
+                <div
+                  className="badminton-match-details__modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="badminton-game-score-title"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="badminton-match-details__modal-header">
+                    <h3 id="badminton-game-score-title">
+                      Game {viewGame} &middot; Player points
+                    </h3>
+                    <button
+                      type="button"
+                      className="badminton-match-details__modal-close"
+                      aria-label="Close"
+                      onClick={() => setViewGame(null)}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <div className="badminton-match-details__modal-teams">
+                    {teams.map((team) => (
+                      <section key={team.name}>
+                        <header>
+                          <span>{team.name}</span>
+                          <strong>{team.total}</strong>
+                        </header>
+                        {team.players.length > 0 ? (
+                          <ul>
+                            {team.players.map((player) => (
+                              <li key={player.playerId}>
+                                <span>{player.playerName}</span>
+                                <strong>
+                                  {playerPoints[player.playerId]?.[viewGame] ??
+                                    0}
+                                </strong>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="badminton-match-details__modal-empty">
+                            {rosterError ?? "No player data available."}
+                          </p>
+                        )}
+                      </section>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
         {localScoreError && (
           <p className="badminton-match-details__error" role="alert">

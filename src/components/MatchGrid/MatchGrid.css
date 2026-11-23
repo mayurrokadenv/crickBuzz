@@ -275,3 +275,11 @@
     color: #ff4c6d;
 }
 
+.match-card__status--cancelled {
+    color: #ef4444;
+}
+
+.match-card__status--scheduled {
+    color: #38bdf8;
+}
+

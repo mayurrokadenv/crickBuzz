@@ -23,13 +23,15 @@ export interface AdminLoginResponse {
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL || "/api"}/admin`;
 
+
 function getAuthHeaders() {
 
     const token = localStorage.getItem("token");
 
     return {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
+        // Don't send "Bearer null" when there is no stored token (e.g. testing without login)
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
     };
 }
 

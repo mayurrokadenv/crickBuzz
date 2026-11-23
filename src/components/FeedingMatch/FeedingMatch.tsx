@@ -11,6 +11,7 @@ import {
   getTemporaryBadmintonScore,
 } from "../../services/temporaryBadmintonScoreService";
 import { isLocalRacquetSport } from "../../utils/localRacquetSports";
+import { loadRacquetMatches } from "../../services/racquetMatchService";
 import "./FeedingMatch.css";
 
 const FEEDING_MATCH_REFRESH_EVENT = "crickbuzz-live-feeds-refresh";
@@ -123,6 +124,10 @@ const FeedingMatchComponent = ({
       setLoading(true);
       setError(null);
       const matches = await getLiveMatches();
+      // Badminton/Pickleball status and scores are saved in /api/racquet-matches.
+      await loadRacquetMatches().catch((loadError: unknown) =>
+        console.error("Failed to load racquet matches", loadError),
+      );
       let savedFixtures: ReturnType<
         typeof getAllTemporaryBadmintonFixtureDetails
       > = [];

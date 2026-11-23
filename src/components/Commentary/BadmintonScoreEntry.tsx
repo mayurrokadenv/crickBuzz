@@ -16,6 +16,10 @@ import {
 } from "../../services/temporaryBadmintonFixtureService";
 import { showInfo, showSuccess } from "../../services/common/AlertService";
 import { getLocalRacquetSport } from "../../utils/localRacquetSports";
+import {
+  BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
+  loadRacquetMatch,
+} from "../../services/racquetMatchService";
 import "./BadmintonScoreEntry.css";
 
 type Props = {
@@ -65,6 +69,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!fixtureId) {
@@ -91,8 +96,12 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
     setStorageError(null);
     setRosterError(null);
 
-    void getFixtureMatchDetails(fixtureId)
-      .then((details) => {
+    // Load the fixture and its saved racquet match (/api/racquet-matches) together.
+    void Promise.all([
+      getFixtureMatchDetails(fixtureId),
+      loadRacquetMatch(fixtureId),
+    ])
+      .then(([details]) => {
         if (ignore) return;
 
         const isBadminton =
@@ -184,22 +193,23 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
         setCurrentGame(activeGame);
         setSelectedGame(activeGame);
         setCurrentSetIsLive(activeSetIsLive);
-        if (!savedScore || savedScore.isLive !== activeSetIsLive) {
-          try {
-            saveTemporaryBadmintonScore(fixtureId, {
-              currentSet: activeGame,
-              sets: activeScores,
-              isLive: activeSetIsLive,
-              playerPoints: activePlayerPoints,
-            });
-          } catch (saveError: unknown) {
-            console.error("Failed to initialize local racquet scores", saveError);
-            setStorageError(
-              saveError instanceof Error
-                ? saveError.message
-                : "Unable to initialize local racquet scores.",
-            );
-          }
+        // First time this match is opened: create its record on the server (POST, 0-0 in all games).
+        if (!savedScore) {
+          saveTemporaryBadmintonScore(fixtureId, {
+            currentSet: activeGame,
+            sets: activeScores,
+            isLive: activeSetIsLive,
+            playerPoints: activePlayerPoints,
+          }).catch((saveError: unknown) => {
+            console.error("Failed to create racquet match", saveError);
+            if (!ignore) {
+              setStorageError(
+                saveError instanceof Error
+                  ? saveError.message
+                  : "Unable to create the match score.",
+              );
+            }
+          });
         }
       })
       .catch((loadError: unknown) => {
@@ -255,18 +265,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
           (normalizedStatus === "live" || normalizedStatus === "inprogress") &&
           getSetNumber(savedFixture.phase) === currentGame;
         setCurrentSetIsLive(currentSetIsLive);
-
-        const savedScore = getTemporaryBadmintonScore(fixtureId);
-        if (
-          savedScore &&
-          savedScore.currentSet === currentGame &&
-          savedScore.isLive !== currentSetIsLive
-        ) {
-          saveTemporaryBadmintonScore(fixtureId, {
-            ...savedScore,
-            isLive: currentSetIsLive,
-          });
-        }
+        // No save needed here: the server works out isLive from the fixture status and phase.
       } catch (refreshError: unknown) {
         console.error("Failed to refresh racquet fixture state", refreshError);
         setStorageError(
@@ -286,6 +285,33 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
         BADMINTON_LOCAL_FIXTURE_CHANGED_EVENT,
         handleFixtureChange,
       );
+  }, [fixtureId, currentGame]);
+
+  // Score saved by the server (after a point, or changed in another browser): show it.
+  useEffect(() => {
+    if (!fixtureId) return;
+
+    const handleScoreChange = (event: Event) => {
+      const changedFixtureId = (
+        event as CustomEvent<{ fixtureId: string }>
+      ).detail?.fixtureId;
+      if (changedFixtureId !== fixtureId) return;
+
+      const savedScore = getTemporaryBadmintonScore(fixtureId);
+      if (!savedScore) return;
+
+      setGameScores(savedScore.sets);
+      setPlayerPoints(savedScore.playerPoints ?? {});
+      setCurrentSetIsLive(savedScore.isLive ?? false);
+      if (savedScore.currentSet !== currentGame) {
+        setCurrentGame(savedScore.currentSet);
+        setSelectedGame(savedScore.currentSet);
+      }
+    };
+
+    window.addEventListener(BADMINTON_LOCAL_SCORE_CHANGED_EVENT, handleScoreChange);
+    return () =>
+      window.removeEventListener(BADMINTON_LOCAL_SCORE_CHANGED_EVENT, handleScoreChange);
   }, [fixtureId, currentGame]);
 
   if (!fixtureId) {
@@ -347,6 +373,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
     isPickleball,
   );
   const canAddPoints =
+    !saving &&
     isLive &&
     currentSetIsLive &&
     !isMatchComplete &&
@@ -414,21 +441,25 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
         }
       : playerPoints;
 
+    // Save on the server first; the buttons stay disabled until it answers.
+    setSaving(true);
     try {
-      saveTemporaryBadmintonScore(fixture.id, {
+      await saveTemporaryBadmintonScore(fixture.id, {
         currentSet: nextCurrentGame,
         sets: updatedScores,
         isLive: nextCurrentSetIsLive,
         playerPoints: updatedPlayerPoints,
       });
     } catch (saveError: unknown) {
-      console.error("Failed to save local racquet score", saveError);
+      console.error("Failed to save racquet score", saveError);
       setStorageError(
         saveError instanceof Error
           ? saveError.message
-          : "Unable to save temporary racquet scores.",
+          : "Unable to save the score.",
       );
       return;
+    } finally {
+      setSaving(false);
     }
 
     setGameScores(updatedScores);
@@ -480,21 +511,6 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
         </section>
       )}
 
-      <div className="badminton-score-entry__game-selector">
-        <label htmlFor="badminton-game-select">Scoring game</label>
-        <select
-          id="badminton-game-select"
-          value={selectedGame}
-          onChange={(event) => setSelectedGame(Number(event.target.value))}
-        >
-          {GAME_NUMBERS.map((gameNumber) => (
-            <option key={gameNumber} value={gameNumber}>
-              Game {gameNumber}
-            </option>
-          ))}
-        </select>
-      </div>
-
       <div className="badminton-score-entry__players">
         <article className="badminton-score-entry__player">
           <h3>{fixture.homeTeamName}</h3>
@@ -508,8 +524,12 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
                   key={player.playerId}
                 >
                   <span className="badminton-score-entry__player-name-points">
-                    {player.playerName} -{" "}
-                    {playerPoints[player.playerId]?.[selectedGame] ?? 0}
+                    <span className="badminton-score-entry__player-name">
+                      {player.playerName}
+                    </span>
+                    <span className="badminton-score-entry__player-points">
+                      {playerPoints[player.playerId]?.[selectedGame] ?? 0}
+                    </span>
                   </span>
                   <button
                     type="button"
@@ -544,8 +564,12 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
                   key={player.playerId}
                 >
                   <span className="badminton-score-entry__player-name-points">
-                    {player.playerName} -{" "}
-                    {playerPoints[player.playerId]?.[selectedGame] ?? 0}
+                    <span className="badminton-score-entry__player-name">
+                      {player.playerName}
+                    </span>
+                    <span className="badminton-score-entry__player-points">
+                      {playerPoints[player.playerId]?.[selectedGame] ?? 0}
+                    </span>
                   </span>
                   <button
                     type="button"
@@ -622,7 +646,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
       </section>
 
       <p className="badminton-score-entry__notice">
-        Scores are stored in this browser only and are not sent to the server.
+        Scores are saved on the server and shown on every screen.
       </p>
       {error && <p className="badminton-score-entry__error">{error}</p>}
       {storageError && (

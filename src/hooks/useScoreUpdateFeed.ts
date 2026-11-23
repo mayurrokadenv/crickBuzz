@@ -313,6 +313,13 @@ async function joinFixtureGroup(fixtureId: string) {
   }
 }
 
+const GUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isOwnFixtureId(fixtureId: string) {
+  return GUID_PATTERN.test(fixtureId);
+}
+
 export function useScoreUpdateFeed(fixtureId: string) {
   const [feedVersion, setFeedVersion] = useState(0);
 
@@ -321,7 +328,9 @@ export function useScoreUpdateFeed(fixtureId: string) {
   }, []);
 
   useEffect(() => {
-    if (!fixtureId) return;
+    // Only our own fixtures (GUID ids) have live updates on our backend. External Cricbuzz
+    // matches use numeric ids (e.g. 161285); calling /api/fixtures/161285 would just return 404.
+    if (!fixtureId || !isOwnFixtureId(fixtureId)) return;
 
     fixtureSubscribers.set(fixtureId, (fixtureSubscribers.get(fixtureId) ?? 0) + 1);
     void ensureSharedConnection()

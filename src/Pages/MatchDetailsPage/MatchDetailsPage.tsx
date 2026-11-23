@@ -38,6 +38,7 @@ import {
   type TemporaryBadmintonFixtureDetails,
 } from "../../services/temporaryBadmintonFixtureService";
 import { isLocalRacquetSport } from "../../utils/localRacquetSports";
+import { loadRacquetMatch } from "../../services/racquetMatchService";
 
 function MatchDetailsPage() {
   const { matchId } = useParams();
@@ -117,15 +118,24 @@ function MatchDetailsPage() {
       return;
     }
 
-    try {
-      const details = getTemporaryBadmintonFixtureDetails(matchId);
-      setStoredBadmintonFixture(
-        details ? { fixtureId: matchId, details } : null,
-      );
-    } catch (error: unknown) {
-      console.error("Failed to load local racquet fixture details", error);
-      setStoredBadmintonFixture(null);
-    }
+    // Badminton/Pickleball status and phase come from /api/racquet-matches (404 = not saved yet).
+    let ignore = false;
+    loadRacquetMatch(matchId)
+      .catch((error: unknown) => {
+        console.error("Failed to load racquet match", error);
+        return null;
+      })
+      .then(() => {
+        if (ignore) return;
+        const details = getTemporaryBadmintonFixtureDetails(matchId);
+        setStoredBadmintonFixture(
+          details ? { fixtureId: matchId, details } : null,
+        );
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [matchId, source]);
 
   // ---------- LOAD MATCH DETAILS (initial request) ----------

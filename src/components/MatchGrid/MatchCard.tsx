@@ -128,7 +128,12 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
                         ? "match-card__status--preview"
                       : activeStatus === "Complete"
                             ? "match-card__status--complete"
-                            : ""
+                            : normalizedStatus === "cancelled" ||
+                                normalizedStatus === "canceled"
+                              ? "match-card__status--cancelled"
+                              : normalizedStatus === "scheduled"
+                                ? "match-card__status--scheduled"
+                                : ""
             }`}
         >
             {isLive && <span className="match-card__live-dot" />}

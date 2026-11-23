@@ -63,7 +63,9 @@ export interface CommentaryEntry {
   sportName: string;
 }
 
-const API_URL = "https://crick-buzz-liard.vercel.app/api";
+// Same base URL as the other services: "/api" goes to the backend through the Vite proxy
+// locally (API_PROXY_TARGET in .env.local) and through the vercel.json rewrite when deployed.
+const API_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function getLiveMatches(): Promise<FeedingMatch[]> {
   try {
