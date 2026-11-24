@@ -3,10 +3,12 @@ import type { ChangeEvent, FormEvent } from "react";
 import "./FixtureForm.css";
 
 import { getTeams, type Team } from "../../services/TeamService";
-import { sportService, type Sport } from "../../services/fixturesservice";
+import { fixtureService, sportService, type Sport } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
 import { getSeries as fetchSeries } from "../../services/SeriesService";
 import { useFixtureFeed } from "../../hooks/useFixtureFeed";
+import { useLocation } from "react-router-dom";
+import { isLocalRacquetSport } from "../../utils/localRacquetSports";
 
 // Define Series interface based on your API response
 interface Series {
@@ -35,6 +37,7 @@ interface FixtureFormProps {
 
 function FixtureForm({ onSaved }: FixtureFormProps) {
 
+    const location = useLocation();
     const { fixturesById, createdFixtures, updatedFixtures, connectionState } = useFixtureFeed();
 
     const [sports, setSports] = useState<Sport[]>([]);
@@ -99,25 +102,39 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
 
     // Filter series based on selected sport
     const filteredSeries = series.filter(s => s.sportId === selectedSport?.id);
+    const selectedSeries = series.find((item) => item.id === fixture.seriesId);
+    const isAddingNewSeriesTeam = Boolean(
+        isLocalRacquetSport(selectedSeries?.sportName) &&
+        selectedSeries &&
+        [fixture.home, fixture.away].some(
+            (teamId) =>
+                teamId &&
+                !selectedSeries.teams.some((team) => team.teamId === teamId),
+        ),
+    );
 
-    // Determine which teams to show based on whether a series is selected
-    let filteredTeams: { id: string; teamName: string }[] = [];
+    useEffect(() => {
+        const requestedSeriesId = new URLSearchParams(location.search).get("seriesId");
+        if (!requestedSeriesId || !sports.length || !series.length) return;
 
-    if (fixture.seriesId) {
-        const selectedSeries = series.find(s => s.id === fixture.seriesId);
-        if (selectedSeries) {
-            // Map series teams to the format expected by the dropdown
-            filteredTeams = selectedSeries.teams.map(t => ({ 
-                id: t.teamId, 
-                teamName: t.teamName 
-            }));
-        }
-    } else {
-        // Default behavior: show all teams for the selected sport
-        filteredTeams = sportswiseteams.filter(
-            (team) => team.sportId === selectedSport?.id
-        );
-    }
+        const requestedSeries = series.find((item) => item.id === requestedSeriesId);
+        if (!requestedSeries) return;
+
+        const sportName =
+            sports.find((sport) => sport.id === requestedSeries.sportId)?.name ??
+            requestedSeries.sportName;
+        setFixture((current) => ({
+            ...current,
+            sport: sportName,
+            seriesId: requestedSeries.id,
+            home: "",
+            away: "",
+        }));
+    }, [location.search, series, sports]);
+
+    const filteredTeams = sportswiseteams.filter(
+        (team) => team.sportId === selectedSport?.id
+    );
 
     // Check if the selected sport is cricket (or any sport that needs overs)
     const isCricket = fixture.sport?.toLowerCase() === "cricket";
@@ -184,24 +201,26 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
             return;
         }
 
-        if (!fixture.scheduledAtUtc) {
+        if (!isAddingNewSeriesTeam && !fixture.scheduledAtUtc) {
             showError("Validation Error", "Please select a scheduled date and time.");
             return;
         }
 
-        const scheduledDate = new Date(fixture.scheduledAtUtc);
-        if (Number.isNaN(scheduledDate.getTime())) {
-            showError("Validation Error", "Please select a valid scheduled date and time.");
-            return;
-        }
+        if (!isAddingNewSeriesTeam) {
+            const scheduledDate = new Date(fixture.scheduledAtUtc);
+            if (Number.isNaN(scheduledDate.getTime())) {
+                showError("Validation Error", "Please select a valid scheduled date and time.");
+                return;
+            }
 
-        if (scheduledDate < new Date()) {
-            showError("Validation Error", "Scheduled date and time cannot be in the past.");
-            return;
+            if (scheduledDate < new Date()) {
+                showError("Validation Error", "Scheduled date and time cannot be in the past.");
+                return;
+            }
         }
 
         // Validate total overs only for cricket.
-        if (isCricket) {
+        if (isCricket && !isAddingNewSeriesTeam) {
             if (!fixture.totalOvers.trim()) {
                 showError("Validation Error", "Please enter total overs.");
                 return;
@@ -213,10 +232,12 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
             }
         }
 
-        const payload: any = {
+        const payload = {
             homeTeamId: fixture.home,
             awayTeamId: fixture.away,
-            scheduledAtUtc: new Date(fixture.scheduledAtUtc).toISOString(),
+            scheduledAtUtc: isAddingNewSeriesTeam
+                ? undefined
+                : new Date(fixture.scheduledAtUtc).toISOString(),
             totalOvers: isCricket ? fixture.totalOvers : undefined,
             seriesId: fixture.seriesId || null, // Include seriesId, send null if "None" is selected
         };
@@ -224,29 +245,13 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
         console.log("Payload before sending:", payload);
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "/api"}/fixtures`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
-
-            console.log("Response from server==================:", response.url, response.status, response.statusText);
-
-            if (!response.ok) {
-                let errorMessage = "Failed to create fixture";
-                try {
-                    const error = await response.json();
-                    errorMessage = error.detail || error.message || errorMessage;
-                } catch (e) {
-                    errorMessage = await response.text() || errorMessage;
-                }
-                showError("Error", errorMessage);
-                return;
-            }
-
-            await showSuccess("Success", "Fixture scheduled successfully!");
+            const result = await fixtureService.createFixture(payload);
+            await showSuccess(
+                result.bracketRebuilt ? "Series schedule rebuilt" : "Success",
+                result.bracketRebuilt
+                    ? `${result.addedTeamCount} team${result.addedTeamCount === 1 ? "" : "s"} added. The bracket schedule was rebuilt.`
+                    : "Fixture scheduled successfully!",
+            );
             onSaved();
             setFixture({
                 sport: sports.length > 0 ? sports[0].name : "",
@@ -256,8 +261,12 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                 scheduledAtUtc: "",
                 totalOvers: "",
             });
-        } catch (error) {
-            showError("Error", "Something went wrong.");
+        } catch (error: unknown) {
+            console.error("Failed to create fixture locally", error);
+            showError(
+                "Error",
+                error instanceof Error ? error.message : "Something went wrong.",
+            );
         }
     };
 

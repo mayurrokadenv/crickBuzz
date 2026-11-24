@@ -17,6 +17,7 @@ import { NVianDashboardSearchProvider } from "./context/NVianDashboardSearchCont
 import { DashboardSearchProvider } from "./context/DashboardSearchContext.tsx";
 import { RegistrationProvider } from "./context/RegistrationContext.tsx";
 import Series from "./Pages/Admin/Series.tsx";
+import SeriesDetails from "./Pages/Admin/SeriesDetails.tsx";
 import PointsTable from "./Pages/PointsTable.tsx";
 
 function App() {
@@ -51,6 +52,7 @@ function App() {
                                 <Route path="teams-players" element={<TeamsPlayers />} />
                                 <Route path="commentary" element={<Commentary />} />
                                 <Route path="series" element={<Series />} />
+                                <Route path="series/:seriesId" element={<SeriesDetails />} />
                             </Route>
 
                             <Route

@@ -1,8 +1,8 @@
 // Badminton / Pickleball game scores (and doubles player points).
-// Same functions as before, but the data now comes from the server (/api/racquet-matches)
-// through racquetMatchService instead of browser local storage.
+// Racquet scores are stored in local storage through racquetMatchService.
 import type { FixtureSetScoreDto } from "../components/types/FixtureDetails";
 import { getCachedRacquetMatch, saveRacquetMatch } from "./racquetMatchService";
+import { isRacquetGameComplete } from "../utils/localRacquetSports";
 
 export { BADMINTON_LOCAL_SCORE_CHANGED_EVENT } from "./racquetMatchService";
 
@@ -13,7 +13,7 @@ export interface TemporaryBadmintonScore {
   playerPoints?: Record<string, Record<number, number>>;
 }
 
-// Kept only so existing "storage" listeners compile; scores are no longer in local storage.
+// Preserve the storage key used by existing score listeners.
 export function getTemporaryBadmintonScoreStorageKey(fixtureId: string) {
   return `crickbuzz:badminton-score:v1:${fixtureId}`;
 }
@@ -36,18 +36,48 @@ export function getTemporaryBadmintonScore(
   };
 }
 
-// Saves the game scores on the server. The server checks the sport rules and decides
-// currentSet / isLive itself. Throws with the server's message when the score is rejected.
+// Saves the game scores and active game state locally.
 export async function saveTemporaryBadmintonScore(
   fixtureId: string,
   score: TemporaryBadmintonScore,
 ): Promise<void> {
-  await saveRacquetMatch(fixtureId, (current) => ({
-    ...current,
-    score: {
-      ...current.score,
-      sets: score.sets,
-      playerPoints: score.playerPoints ?? current.score.playerPoints,
-    },
-  }));
+  await saveRacquetMatch(fixtureId, (current) => {
+    const completedScores = score.sets.filter((set) =>
+      isRacquetGameComplete(set.teamA, set.teamB, current.sport),
+    );
+    const gamesWonA = completedScores.filter(
+      (set) => set.teamA > set.teamB,
+    ).length;
+    const gamesWonB = completedScores.filter(
+      (set) => set.teamB > set.teamA,
+    ).length;
+    const isMatchComplete = gamesWonA >= 2 || gamesWonB >= 2;
+    const winningTeamId = isMatchComplete
+      ? gamesWonA > gamesWonB
+        ? current.fixture.homeTeamId
+        : current.fixture.awayTeamId
+      : current.fixture.winningTeamId;
+
+    return {
+      ...current,
+      fixture: isMatchComplete
+        ? {
+            ...current.fixture,
+            status: "Completed",
+            statusValue: 2,
+            winningTeamId,
+          }
+        : current.fixture,
+      score: {
+        ...current.score,
+        currentSet: score.currentSet,
+        isLive: score.isLive ?? current.score.isLive,
+        sets: score.sets,
+        playerPoints: score.playerPoints ?? current.score.playerPoints,
+        gamesWonA,
+        gamesWonB,
+        isMatchComplete,
+      },
+    };
+  });
 }

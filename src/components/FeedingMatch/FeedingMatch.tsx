@@ -124,7 +124,7 @@ const FeedingMatchComponent = ({
       setLoading(true);
       setError(null);
       const matches = await getLiveMatches();
-      // Badminton/Pickleball status and scores are saved in /api/racquet-matches.
+      // Badminton/Pickleball status and scores are saved in local storage.
       await loadRacquetMatches().catch((loadError: unknown) =>
         console.error("Failed to load racquet matches", loadError),
       );

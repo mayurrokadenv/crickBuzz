@@ -1,0 +1,296 @@
+.series-details {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  color: #e2e8f0;
+}
+
+.series-details__back,
+.series-details__filters button {
+  color: #cbd5e1;
+  background: #202533;
+  border: 1px solid #30384a;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.series-details__back {
+  justify-self: start;
+  padding: 9px 14px;
+}
+
+.series-details__back:hover,
+.series-details__filters button:hover,
+.series-details__filters button.active {
+  color: #fff;
+  border-color: #8b5cf6;
+  background: #33265b;
+}
+
+.series-details__header,
+.series-details__section {
+  padding: 22px;
+  border: 1px solid #30384a;
+  border-radius: 16px;
+  background: #171c26;
+}
+
+.series-details__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.series-details__header h1,
+.series-details__section h2 {
+  margin: 0 0 8px;
+  color: #fff;
+}
+
+.series-details__header p,
+.series-details__team-meta,
+.series-details__round-date,
+.series-details__match-venue {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.series-details__meta {
+  margin-top: 8px !important;
+}
+
+.series-details__played {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #33265b;
+  color: #c4b5fd;
+  font-size: 13px;
+}
+
+.series-details__section {
+  display: grid;
+  gap: 16px;
+}
+
+.series-details__teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.series-details__team,
+.series-details__match {
+  padding: 14px;
+  border: 1px solid #30384a;
+  border-radius: 12px;
+  background: #202533;
+}
+
+.series-details__team-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.series-details__team-heading h3 {
+  flex: 1;
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+}
+
+.series-details__team-color {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.series-details__status {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #334155;
+  color: #cbd5e1;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.series-details__status--completed {
+  background: #123d32;
+  color: #6ee7b7;
+}
+
+.series-details__status--live {
+  background: #4a1d2b;
+  color: #fda4af;
+}
+
+.series-details__status--scheduled {
+  background: #33265b;
+  color: #c4b5fd;
+}
+
+.series-details__status--tbd {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+.series-details__team-meta {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.series-details__players {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.series-details__players li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.series-details__players li span:last-child {
+  color: #94a3b8;
+}
+
+.series-details__empty,
+.series-details__message {
+  color: #94a3b8;
+}
+
+.series-details__section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.series-details__section-heading h2 {
+  margin: 0;
+}
+
+.series-details__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.series-details__filters button {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.series-details__bracket {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.series-details__round {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 260px;
+}
+
+.series-details__round h3 {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.series-details__round-date {
+  font-size: 12px;
+}
+
+.series-details__bye {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #252c3b;
+  color: #c4b5fd;
+  font-size: 12px;
+}
+
+.series-details__match {
+  display: grid;
+  gap: 8px;
+  background: #1c2230;
+}
+
+.series-details__match--tbd {
+  border-style: dashed;
+}
+
+.series-details__match-heading {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.series-details__match-team {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #252c3b;
+  color: #cbd5e1;
+}
+
+.series-details__match-team--winner {
+  background: #123d32;
+  color: #6ee7b7;
+}
+
+.series-details__match-team strong {
+  color: inherit;
+}
+
+.series-details__match-venue,
+.series-details__winner {
+  margin: 0;
+  font-size: 11px;
+}
+
+.series-details__winner,
+.series-details__champion {
+  color: #6ee7b7;
+}
+
+.series-details__champion {
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: #33265b;
+  font-weight: 600;
+}
+
+.series-details__message {
+  padding: 24px;
+}
+
+@media (max-width: 640px) {
+  .series-details {
+    padding: 12px;
+  }
+
+  .series-details__header,
+  .series-details__section-heading {
+    flex-direction: column;
+  }
+}

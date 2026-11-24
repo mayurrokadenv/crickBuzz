@@ -62,7 +62,7 @@ function NVianCommentary({ fixtureId, title }: Props) {
     };
   }, [fixtureId, connectionState]);
 
-  // Load initial commentary from API
+  // Load initial commentary from local match data.
 
   useEffect(() => {
     if (!fixtureDetails) return;
@@ -83,7 +83,7 @@ function NVianCommentary({ fixtureId, title }: Props) {
     setComments(apiComments);
   }, [fixtureDetails]);
 
-  // Append live commentary from SignalR
+  // Append commentary updates from the local feed.
   useEffect(() => {
     if (!liveComment) return;
     const mappedComment: Comment = {

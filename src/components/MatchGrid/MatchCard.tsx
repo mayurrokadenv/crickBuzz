@@ -183,8 +183,8 @@ function MatchCard({ match, isSelected, onClick }: MatchCardProps) {
           ) : (
             <span>
               {isLive
-                ? `Current game ${match.currentSet ?? 1}`
-                : "Best of 3 games"}
+                ? `Current set ${match.currentSet ?? 1}`
+                : "Best of 3 sets"}
             </span>
           )
         ) : (

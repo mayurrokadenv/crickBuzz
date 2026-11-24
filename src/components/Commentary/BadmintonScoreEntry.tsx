@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getFixtureMatchDetails } from "../../services/MatchDataService";
 import type {
   FixtureDetailsDto,
@@ -14,8 +15,11 @@ import {
   BADMINTON_LOCAL_FIXTURE_CHANGED_EVENT,
   getTemporaryBadmintonFixtureDetails,
 } from "../../services/temporaryBadmintonFixtureService";
-import { showInfo, showSuccess } from "../../services/common/AlertService";
-import { getLocalRacquetSport } from "../../utils/localRacquetSports";
+import { showInfo } from "../../services/common/AlertService";
+import {
+  getLocalRacquetSport,
+  isRacquetGameComplete,
+} from "../../utils/localRacquetSports";
 import {
   BADMINTON_LOCAL_SCORE_CHANGED_EVENT,
   loadRacquetMatch,
@@ -48,13 +52,15 @@ function isGameComplete(
   teamB: number,
   isPickleball = false,
 ) {
-  const highScore = Math.max(teamA, teamB);
-  const lead = Math.abs(teamA - teamB);
-  if (isPickleball) return highScore >= 11 && lead >= 2;
-  return (highScore >= 21 && lead >= 2) || highScore >= 30;
+  return isRacquetGameComplete(
+    teamA,
+    teamB,
+    isPickleball ? "pickleball" : "badminton",
+  );
 }
 
 function BadmintonScoreEntry({ fixtureId, sport }: Props) {
+  const navigate = useNavigate();
   const [fixture, setFixture] = useState<FixtureDetailsDto | null>(null);
   const [gameScores, setGameScores] = useState<FixtureSetScoreDto[]>([]);
   const [currentGame, setCurrentGame] = useState(1);
@@ -104,9 +110,8 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
       .then(([details]) => {
         if (ignore) return;
 
-        const isBadminton =
-          getLocalRacquetSport(sport ?? details.sport) === "badminton";
-        if (isBadminton) {
+        const isRacquetSport = getLocalRacquetSport(sport ?? details.sport);
+        if (isRacquetSport) {
           void getTeams()
             .then((teams) => {
               if (ignore) return;
@@ -120,12 +125,12 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
               );
             })
             .catch((rosterLoadError: unknown) => {
-              console.error("Failed to load badminton team rosters", rosterLoadError);
+              console.error("Failed to load racquet team rosters", rosterLoadError);
               if (!ignore) {
                 setRosterError(
                   rosterLoadError instanceof Error
                     ? rosterLoadError.message
-                    : "Unable to load badminton team rosters.",
+                    : "Unable to load racquet team rosters.",
                 );
               }
             });
@@ -193,7 +198,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
         setCurrentGame(activeGame);
         setSelectedGame(activeGame);
         setCurrentSetIsLive(activeSetIsLive);
-        // First time this match is opened: create its record on the server (POST, 0-0 in all games).
+        // First time this match is opened: create its local score record.
         if (!savedScore) {
           saveTemporaryBadmintonScore(fixtureId, {
             currentSet: activeGame,
@@ -265,7 +270,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
           (normalizedStatus === "live" || normalizedStatus === "inprogress") &&
           getSetNumber(savedFixture.phase) === currentGame;
         setCurrentSetIsLive(currentSetIsLive);
-        // No save needed here: the server works out isLive from the fixture status and phase.
+        // The live state is derived from the fixture status and phase.
       } catch (refreshError: unknown) {
         console.error("Failed to refresh racquet fixture state", refreshError);
         setStorageError(
@@ -287,7 +292,30 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
       );
   }, [fixtureId, currentGame]);
 
-  // Score saved by the server (after a point, or changed in another browser): show it.
+  useEffect(() => {
+    if (!fixture || loading) return;
+    const winsA = gameScores.filter(
+      (score) =>
+        isGameComplete(
+          score.teamA,
+          score.teamB,
+          getLocalRacquetSport(sport ?? fixture.sport) === "pickleball",
+        ) && score.teamA > score.teamB,
+    ).length;
+    const winsB = gameScores.filter(
+      (score) =>
+        isGameComplete(
+          score.teamA,
+          score.teamB,
+          getLocalRacquetSport(sport ?? fixture.sport) === "pickleball",
+        ) && score.teamB > score.teamA,
+    ).length;
+    if (fixture.status.toLowerCase() === "completed" || winsA >= 2 || winsB >= 2) {
+      navigate("/admin/fixtures", { replace: true });
+    }
+  }, [fixture, gameScores, loading, navigate, sport]);
+
+  // Reflect score changes made in this browser or another browser.
   useEffect(() => {
     if (!fixtureId) return;
 
@@ -441,7 +469,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
         }
       : playerPoints;
 
-    // Save on the server first; the buttons stay disabled until it answers.
+    // Save locally before enabling the scoring controls again.
     setSaving(true);
     try {
       await saveTemporaryBadmintonScore(fixture.id, {
@@ -470,17 +498,13 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
       setSelectedGame(nextCurrentGame);
       setCurrentSetIsLive(nextCurrentSetIsLive);
       await showInfo(
-        `Game ${selectedGame} complete`,
+        `Set ${selectedGame} complete`,
         nextCurrentSetIsLive
-          ? `Game ${nextCurrentGame} is live according to the fixture. Scoring is enabled.`
-          : `Set the fixture phase to Set ${nextCurrentGame} when that game goes live. Scoring will then be enabled.`,
+          ? `Set ${nextCurrentGame} is live according to the fixture. Scoring is enabled.`
+          : `Set the fixture phase to Set ${nextCurrentGame} when that set goes live. Scoring will then be enabled.`,
       );
     } else if (matchIsComplete) {
       setCurrentSetIsLive(false);
-      await showSuccess(
-        "Match complete",
-        "The match has been decided. Further scoring is locked.",
-      );
     } else if (gameIsComplete) {
       setCurrentSetIsLive(false);
     }
@@ -491,7 +515,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
       <header className="badminton-score-entry__header">
         <div>
           <h2>Live Score Management</h2>
-          <p>{sportName} · Best of 3 games</p>
+          <p>{sportName} · Best of 3 sets</p>
         </div>
         <span
           className={`badminton-score-entry__badge ${
@@ -505,7 +529,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
       {isPickleball && (
         <section className="badminton-score-entry__rules">
           <h3>Pickleball scoring rules</h3>
-          <span>Points per game: 11</span>
+          <span>Points per set: 11</span>
           <span>Winning margin: 2 points</span>
           <span>Maximum points: No fixed maximum</span>
         </section>
@@ -515,8 +539,8 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
         <article className="badminton-score-entry__player">
           <h3>{fixture.homeTeamName}</h3>
           <strong>{selectedScore.teamA}</strong>
-          <span>Games: {winsA}</span>
-          {scoringSport === "badminton" && homeTeamPlayers.length === 2 ? (
+          <span>Sets: {winsA}</span>
+          {homeTeamPlayers.length === 2 ? (
             <div className="badminton-score-entry__player-actions">
               {homeTeamPlayers.map((player) => (
                 <div
@@ -555,8 +579,8 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
         <article className="badminton-score-entry__player">
           <h3>{fixture.awayTeamName}</h3>
           <strong>{selectedScore.teamB}</strong>
-          <span>Games: {winsB}</span>
-          {scoringSport === "badminton" && awayTeamPlayers.length === 2 ? (
+          <span>Sets: {winsB}</span>
+          {awayTeamPlayers.length === 2 ? (
             <div className="badminton-score-entry__player-actions">
               {awayTeamPlayers.map((player) => (
                 <div
@@ -595,12 +619,12 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
       </div>
 
       <section className="badminton-score-entry__games">
-        <h3>Game Scores</h3>
+        <h3>Set Scores</h3>
         <div className="badminton-score-entry__table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Game</th>
+                <th>Set</th>
                 <th>{fixture.homeTeamName}</th>
                 <th>{fixture.awayTeamName}</th>
                 <th>Status</th>
@@ -616,7 +640,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
                       : ""
                   }
                 >
-                  <th scope="row">Game {score.setNumber}</th>
+                  <th scope="row">Set {score.setNumber}</th>
                   <td>{score.teamA}</td>
                   <td>{score.teamB}</td>
                   <td>{getGameStatus(score)}</td>
@@ -626,7 +650,7 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
           </table>
         </div>
         <div className="badminton-score-entry__footer">
-          <span>Current game: {currentGame}</span>
+          <span>Current set: {currentGame}</span>
           <span
             className={
               isMatchComplete
@@ -639,14 +663,14 @@ function BadmintonScoreEntry({ fixtureId, sport }: Props) {
               : !isLive
                 ? "Match not live · scoring locked"
                 : currentSetIsLive
-                  ? `Game ${currentGame} live`
-                  : `Waiting for fixture to set Game ${currentGame} live`}
+                  ? `Set ${currentGame} live`
+                  : `Waiting for Set ${currentGame} to go live in the fixture`}
           </span>
         </div>
       </section>
 
       <p className="badminton-score-entry__notice">
-        Scores are saved on the server and shown on every screen.
+        Scores are saved in this browser and shown on every screen.
       </p>
       {error && <p className="badminton-score-entry__error">{error}</p>}
       {storageError && (

@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { createTeam, type Team, updateTeam} from "../../../services/TeamService";
+import {
+    createTeam,
+    TEAM_FORMATS,
+    type Team,
+    type TeamFormat,
+    updateTeam,
+} from "../../../services/TeamService";
 import AddSportDialog from "./AddSportDialog";
 import "./CreateTeam.css";
 import { type Sport, getSports, createSport } from "../../../services/SportService";
@@ -23,6 +29,7 @@ const [teamName, setTeamName] = useState("");
 const [selectedColor, setSelectedColor] = useState("#9B5DE5");
 const [showSportDialog, setShowSportDialog] = useState(false);
 const [selectedSport, setSelectedSport] = useState("");
+const [selectedFormat, setSelectedFormat] = useState<TeamFormat | "">("");
 const { loadTeams, sports, loadSports, } = useTeamSportPlayerData();
 
   useEffect(() => {
@@ -31,14 +38,20 @@ const { loadTeams, sports, loadSports, } = useTeamSportPlayerData();
         setTeamName(team.teamName);
         setSelectedSport(team.sportId);
         setSelectedColor(team.color);
+        setSelectedFormat(team.format ?? "");
     }
     else {
         setTeamName("");
         setSelectedSport("");
-        setSelectedColor("#9B5DE5");
+        setSelectedColor("");
+        setSelectedFormat("");
     }
 }, [team]);
 
+const isRacquetSport = ["badminton", "pickleball"].includes(
+    sports.find((sport) => sport.id === selectedSport)?.name.toLowerCase() ?? ""
+);
+const requiresFormat = isRacquetSport && (!team || Boolean(team.format));
   const colors = [
     "#9B5DE5",
     "#F9A826",
@@ -106,6 +119,12 @@ const handleCreateTeam = async () => {
         return;
     }
 
+    const format = TEAM_FORMATS.find((item) => item === selectedFormat);
+    if (requiresFormat && !format) {
+        showWarning("Error", "Please select a team format.");
+        return;
+    }
+
     if (!selectedColor) {
         showWarning(
            "Error",
@@ -119,7 +138,8 @@ const handleCreateTeam = async () => {
                 id: team.id,
                 name: teamName,
                 sportId: selectedSport,
-                colorHex: selectedColor
+                colorHex: selectedColor,
+                format: isRacquetSport ? format : undefined,
             });
 
             if(response.success)
@@ -137,7 +157,8 @@ const handleCreateTeam = async () => {
             var teamResponse = await createTeam({
                 name: teamName,
                 sportId: selectedSport,
-                colorHex: selectedColor
+                colorHex: selectedColor,
+                format: isRacquetSport ? format : undefined,
             });
 
            if(teamResponse.success)
@@ -157,6 +178,7 @@ const handleCreateTeam = async () => {
             setTeamName("");
             setSelectedSport("");
             setSelectedColor("");
+            setSelectedFormat("");
         }
       await loadTeams();
 
@@ -166,7 +188,7 @@ const handleCreateTeam = async () => {
     } catch (error) {
         showError(
           "Error",
-          "Unable to create team."
+          error instanceof Error ? error.message : "Unable to create team."
         );
         console.error(error);
     }
@@ -201,7 +223,10 @@ const handleCreateTeam = async () => {
             <div className="sport-container">
     <select
         value={selectedSport}
-        onChange={(e) => setSelectedSport(e.target.value)}
+        onChange={(e) => {
+    setSelectedSport(e.target.value);
+    setSelectedFormat("");
+        }}
         disabled={team !== null}
     >
         <option value="" disabled>
@@ -243,6 +268,31 @@ const handleCreateTeam = async () => {
           </div>
         </div>
       </div>
+
+      {isRacquetSport && (
+        <div className="form-group">
+          <label htmlFor="team-format">
+            FORMAT{requiresFormat ? " *" : ""}
+          </label>
+          <select
+            id="team-format"
+            value={selectedFormat}
+            required={requiresFormat}
+            onChange={(e) =>
+              setSelectedFormat(
+                TEAM_FORMATS.find((item) => item === e.target.value) ?? ""
+              )
+            }
+          >
+            <option value="">Select Format</option>
+            {TEAM_FORMATS.map((format) => (
+              <option key={format} value={format}>
+                {format}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <button
         className="create-btn"

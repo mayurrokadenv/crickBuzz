@@ -67,7 +67,7 @@ export type FixtureScorecardInnings = {
   bowlingFigures: BowlingFigure[];
 };
 
-// The API now returns scorecards as an object keyed by innings
+// Scorecards are grouped by innings for the match details view.
 // ({ innings1, innings2, ... }) rather than a flat array. Each value can be
 // null when that innings hasn't started yet. We still support the old
 // array shape defensively in case any endpoint hasn't migrated.

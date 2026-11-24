@@ -8,7 +8,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import { startRacquetMatchSync } from './services/racquetMatchService'
 
-// Badminton / Pickleball scores come from the server; keep them in sync on every screen.
+// Keep locally saved Badminton / Pickleball scores in sync across screens.
 startRacquetMatchSync()
 
 createRoot(document.getElementById('root')!).render(

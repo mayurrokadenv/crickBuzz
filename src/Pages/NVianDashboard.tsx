@@ -6,16 +6,12 @@ import MatchGrid from "../components/MatchGrid/MatchGrid";
 import { useState, useEffect, useCallback } from "react";
 import type { Fixture } from "../components/types/Fixture";
 import { mapFixtureToMatchCard } from "../components/MatchGrid/fixtureMatchCardMapper";
-import {
-  getLiveFixtures,
-  searchLiveFixtures,
-} from "../services/MatchDataService";
 import TopPerformers from "../components/TopPerformers/TopPerformers";
 import NVianLiveSummary from "../components/NVianLiveSummary/NVianLiveSummary";
 import Loader from "../components/Loader/Loader";
 import { useNVianDashboardSearch } from "../context/NVianDashboardSearchContext";
 import { useFixtureFeed } from "../hooks/useFixtureFeed";
-import type { Fixture as SignalRFixture } from "../hooks/useFixtureFeed";
+import type { Fixture as FeedFixture } from "../hooks/useFixtureFeed";
 import {
   BADMINTON_LOCAL_FIXTURE_CHANGED_EVENT,
   getAllTemporaryBadmintonFixtureDetails,
@@ -42,7 +38,7 @@ function getSetNumber(phase: string, fallback: number | undefined) {
   return phaseSet ?? (fallback && fallback >= 1 && fallback <= 3 ? fallback : 1);
 }
 
-function mapSignalRFixture(fixture: SignalRFixture): Fixture {
+function mapFeedFixture(fixture: FeedFixture): Fixture {
   return {
     id: fixture.id,
     homeTeamId: String(fixture.homeTeamId ?? ""),
@@ -200,7 +196,7 @@ function NVianDashboard() {
               match.id.toLowerCase() === createdFixture.id.toLowerCase(),
           ),
       )
-      .map(mapSignalRFixture),
+      .map(mapFeedFixture),
   ];
 
   const matchesById = new Map(

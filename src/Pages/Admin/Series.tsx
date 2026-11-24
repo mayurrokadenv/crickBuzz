@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
 import "./Series.css";
 import { showError, showSuccess } from "../../services/common/AlertService";
-import { createSeries, getSeries, deleteSeries } from "../../services/SeriesService";
+import {
+    createSeries,
+    getSeries,
+    deleteSeries,
+    type SeriesFormat,
+} from "../../services/SeriesService";
 import { sportService } from "../../services/fixturesservice";
-import { getTeams } from "../../services/TeamService";
+import { getTeams, type TeamFormat } from "../../services/TeamService";
 import Loader from "../../components/Loader/Loader";
+import { useNavigate } from "react-router-dom";
 
 interface Sport {
     id: string;
@@ -15,6 +21,7 @@ interface Team {
     id: string;
     teamName: string;
     sportId: string;
+    format?: TeamFormat;
 }
 
 interface SeriesTeam {
@@ -27,8 +34,14 @@ interface SeriesData {
     name: string;
     sportId: string;
     sportName: string;
+    startDate?: string;
+    endDate?: string;
+    venue?: string;
+    format?: SeriesFormat;
     teams: SeriesTeam[];
 }
+
+const SERIES_FORMATS: SeriesFormat[] = ["Single", "Double", "Mixed Double"];
 
 function deduplicateById<T>(array: T[], key: keyof T): T[] {
     if (!array) return [];
@@ -42,8 +55,13 @@ function deduplicateById<T>(array: T[], key: keyof T): T[] {
 }
 
 function Series() {
+    const navigate = useNavigate();
     const [name, setName] = useState<string>("");
     const [sportId, setSportId] = useState<string>("");
+    const [format, setFormat] = useState<SeriesFormat | "">("");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [venue, setVenue] = useState("");
     const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
 
     const [sports, setSports] = useState<Sport[]>([]);
@@ -125,7 +143,15 @@ function Series() {
         );
     };
 
-    const filteredTeams = teams.filter((team) => team.sportId === sportId);
+    const requiresFormat = ["badminton", "pickleball"].includes(
+        sports.find((sport) => sport.id === sportId)?.name.toLowerCase() ?? ""
+    );
+    const filteredTeams = teams.filter(
+        (team) =>
+            team.sportId === sportId &&
+            (!requiresFormat ||
+                (team.format !== undefined && (!format || team.format === format)))
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -140,6 +166,23 @@ function Series() {
             showError("Validation Error", "Please select a sport");
             return;
         }
+        if (!startDate || !endDate) {
+            showError("Validation Error", "Start date and end date are required");
+            return;
+        }
+        if (endDate < startDate) {
+            showError("Validation Error", "End date cannot be before the start date");
+            return;
+        }
+        if (!venue.trim()) {
+            showError("Validation Error", "Venue is required");
+            return;
+        }
+        const selectedFormat = SERIES_FORMATS.find((item) => item === format);
+        if (requiresFormat && !selectedFormat) {
+            showError("Validation Error", "Please select a format");
+            return;
+        }
         if (selectedTeamIds.length < 2) {
             showError("Validation Error", "Please select at least 2 teams for a series");
             return;
@@ -151,6 +194,10 @@ function Series() {
             name: name.trim(),
             sportId,
             teamIds: uniqueTeamIds,
+            startDate,
+            endDate,
+            venue: venue.trim(),
+            format: requiresFormat ? selectedFormat : undefined,
         };
 
         setIsSubmitting(true);
@@ -161,13 +208,20 @@ function Series() {
 
             setName("");
             setSportId("");
+            setFormat("");
+            setStartDate("");
+            setEndDate("");
+            setVenue("");
             setSelectedTeamIds([]);
             
             await loadSeries();
 
         } catch (error) {
             console.error("Error creating series:", error);
-            showError("Error", "Failed to create series. Please try again.");
+            showError(
+                "Error",
+                error instanceof Error ? error.message : "Failed to create series. Please try again."
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -199,6 +253,7 @@ function Series() {
                             value={sportId}
                             onChange={(e) => {
                                 setSportId(e.target.value);
+                                setFormat("");
                                 setSelectedTeamIds([]);
                             }}
                             disabled={isSubmitting || isLoading}
@@ -210,6 +265,68 @@ function Series() {
                                 </option>
                             ))}
                         </select>
+                    </div>
+
+                    {requiresFormat && (
+                        <div>
+                            <label htmlFor="series-format">FORMAT *</label>
+                            <select
+                                id="series-format"
+                                value={format}
+                                onChange={(e) => {
+                                    setFormat(
+                                        SERIES_FORMATS.find((item) => item === e.target.value) ?? ""
+                                    );
+                                    setSelectedTeamIds([]);
+                                }}
+                                disabled={isSubmitting || isLoading}
+                            >
+                                <option value="">-- Select a Format --</option>
+                                {SERIES_FORMATS.map((item) => (
+                                    <option key={item} value={item}>
+                                        {item}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    <div>
+                        <label htmlFor="series-start-date">START DATE *</label>
+                        <input
+                            id="series-start-date"
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            required
+                            disabled={isSubmitting || isLoading}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="series-end-date">END DATE *</label>
+                        <input
+                            id="series-end-date"
+                            type="date"
+                            value={endDate}
+                            min={startDate || undefined}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            required
+                            disabled={isSubmitting || isLoading}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="series-venue">VENUE *</label>
+                        <input
+                            id="series-venue"
+                            type="text"
+                            value={venue}
+                            onChange={(e) => setVenue(e.target.value)}
+                            placeholder="Enter venue"
+                            required
+                            disabled={isSubmitting || isLoading}
+                        />
                     </div>
 
                     <div>
@@ -289,6 +406,26 @@ function Series() {
                                     <div className="series-card__score">
                                         {uniqueSeriesTeams.length} Teams
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        className="series-card__game"
+                                        onClick={() => navigate(`/admin/series/${encodeURIComponent(series.id)}`)}
+                                    >
+                                        View Details
+                                    </button>
+
+                                    {["badminton", "pickleball"].includes(series.sportName.toLowerCase()) && (
+                                        <button
+                                            type="button"
+                                            className="series-card__game"
+                                            onClick={() =>
+                                                navigate(`/admin/fixtures?seriesId=${encodeURIComponent(series.id)}`)
+                                            }
+                                        >
+                                            Add Game
+                                        </button>
+                                    )}
 
                                     <button
                                         type="button"

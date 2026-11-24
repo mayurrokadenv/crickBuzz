@@ -6,6 +6,7 @@ import {
   postCommentary,
   updateScoreFixtures,
 } from "../../services/liveservice";
+import { useNavigate } from "react-router-dom";
 import { fixtureService } from "../../services/fixturesservice";
 import "./AddCommentary.css";
 import { showError, showSuccess } from "../../services/common/AlertService";
@@ -99,7 +100,7 @@ const footballQuickActions = [
   { label: "🧤 Save", type: "save", icon: "🧤", color: "#10B981", bgColor: "#D1FAE5", borderColor: "#10B981", selectedBg: "#10B981", selectedColor: "#FFFFFF" },
 ];
 
-// The API now returns `scorecards` as an object keyed by innings
+// Scorecards are grouped by innings for the match details view.
 // (e.g. { innings1: {...}, innings2: null }) instead of a flat array.
 // This normalizes either shape into a flat array of non-null innings so
 // all the existing .filter/.sort/.some logic below keeps working.
@@ -240,6 +241,7 @@ function AddCommentary({
   onCommentaryPosted,
   onScoreUpdated,
 }: AddCommentaryProps) {
+  const navigate = useNavigate();
   const [selectedTeamName, setSelectedTeamName] = useState<string>("");
   // ⭐ Persist selectedBatterId from localStorage
   const [selectedBatterId, setSelectedBatterId] = useState<string>(() => {
@@ -976,10 +978,9 @@ function AddCommentary({
           winningTeamId,
         );
 
-        showSuccess(`Match completed. View full details on the Nvian Dashboard — ${winnerInfo.text}`);
-
         await getFixtures();
         window.dispatchEvent(new CustomEvent("crickbuzz-live-feeds-refresh"));
+        navigate("/admin/fixtures", { replace: true });
       } catch (err) {
         console.error("Auto match completion failed:", err);
         autoCompleteMatchRef.current = null; // allow retry
@@ -998,6 +999,7 @@ function AddCommentary({
     matchStatus,
     battingTeamId,
     currentFixture?.scheduledAtUtc,
+    navigate,
   ]);
 
   const getSide = (teamName: string): 0 | 1 | null => {

@@ -285,7 +285,7 @@ function BadmintonMatchDetailsView({
               {homeTeamName} <span>vs</span> {awayTeamName}
             </h1>
             <p>
-              {phase || "Best of 3 games"}
+              {phase || "Best of 3 sets"}
               {scheduledAt ? ` · ${scheduledAt}` : ""}
             </p>
           </div>
@@ -309,35 +309,35 @@ function BadmintonMatchDetailsView({
 
         {isPickleball && (
           <p className="badminton-match-details__rules">
-            Pickleball rules: 11 points per game, win by 2, no fixed maximum.
+            Pickleball rules: 11 points per set, win by 2, no fixed maximum.
           </p>
         )}
 
         <section className="badminton-match-details__current">
           <div>
-            <span>Current game</span>
+            <span>Current set</span>
             <strong>{currentSet}</strong>
             <small>{currentGameStatus}</small>
           </div>
           <div>
             <span>{homeTeamName}</span>
             <strong>{currentGameScore.teamA}</strong>
-            <small>Games won: {homeGamesWon}</small>
+            <small>Sets won: {homeGamesWon}</small>
           </div>
           <div>
             <span>{awayTeamName}</span>
             <strong>{currentGameScore.teamB}</strong>
-            <small>Games won: {awayGamesWon}</small>
+            <small>Sets won: {awayGamesWon}</small>
           </div>
         </section>
 
         <section className="badminton-match-details__scores">
-          <h2>Game scores</h2>
+          <h2>Set scores</h2>
           <div className="badminton-match-details__table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Game</th>
+                  <th>Set</th>
                   <th>{homeTeamName}</th>
                   <th>{awayTeamName}</th>
                   <th>Status</th>
@@ -370,7 +370,7 @@ function BadmintonMatchDetailsView({
                           : ""
                       }
                     >
-                      <th scope="row">Game {setNumber}</th>
+                      <th scope="row">Set {setNumber}</th>
                       <td>{teamA}</td>
                       <td>{teamB}</td>
                       <td>{gameStatus}</td>
@@ -416,12 +416,12 @@ function BadmintonMatchDetailsView({
                   className="badminton-match-details__modal"
                   role="dialog"
                   aria-modal="true"
-                  aria-labelledby="badminton-game-score-title"
+                  aria-labelledby="badminton-set-score-title"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <div className="badminton-match-details__modal-header">
-                    <h3 id="badminton-game-score-title">
-                      Game {viewGame} &middot; Player points
+                    <h3 id="badminton-set-score-title">
+                      Set {viewGame} &middot; Player points
                     </h3>
                     <button
                       type="button"

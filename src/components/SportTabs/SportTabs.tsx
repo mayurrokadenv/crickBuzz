@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../SportTabs/SportTabs.css";
+import { getSports } from "../../services/SportService";
 
 interface Sport {
     id: string;
@@ -27,13 +28,7 @@ const SportTabs = ({
 
     const loadSports = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "/api"}/sports`);
-
-            if (!response.ok) {
-                throw new Error("Unable to fetch sports.");
-            }
-
-            const data: Sport[] = await response.json();
+            const data = await getSports();
 
             setSportsCategories([
                 {
@@ -43,7 +38,7 @@ const SportTabs = ({
                 ...data,
             ]);
         } catch (error) {
-            console.error("Error loading sports:", error);
+            console.error("Error loading local sports:", error);
         }
     };
 

@@ -1,4 +1,8 @@
-import axios from "axios";
+import {
+  createLocalId,
+  readLocalAppData,
+  updateLocalAppData,
+} from "./localAppStore";
 
 export interface LiveMatchResponse {
   id: string;
@@ -63,30 +67,11 @@ export interface CommentaryEntry {
   sportName: string;
 }
 
-// Same base URL as the other services: "/api" goes to the backend through the Vite proxy
-// locally (API_PROXY_TARGET in .env.local) and through the vercel.json rewrite when deployed.
-const API_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-
 export async function getLiveMatches(): Promise<FeedingMatch[]> {
-  try {
-    const response = await fetch(`${API_URL}/fixtures/live`, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch live matches: ${response.status}`);
-    }
-
-    const data: LiveMatchResponse[] = await response.json();
-    return mapLiveMatchesToFeedingMatches(data);
-  } catch (error) {
-    console.error("Error fetching live matches:", error);
-    throw error;
-  }
+  const fixtures = readLocalAppData().fixtures.filter(
+    (fixture) => fixture.status.toLowerCase() === "live",
+  );
+  return mapLiveMatchesToFeedingMatches(fixtures);
 }
 
 function mapLiveMatchesToFeedingMatches(
@@ -141,87 +126,68 @@ function getFootballProgress(match: LiveMatchResponse): string {
 }
 
 export async function getLiveMatchesWithOriginalIds(): Promise<FeedingMatch[]> {
-  try {
-    const response = await fetch(`${API_URL}/fixtures/live`, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch live matches: ${response.status}`);
-    }
-
-    const data: LiveMatchResponse[] = await response.json();
-    console.log("Fetched live matches:", data);
-    return data.map((match) => ({
-      id: parseInt(match.id.substring(0, 8), 16),
+  return readLocalAppData().fixtures
+    .filter((fixture) => fixture.status.toLowerCase() === "live")
+    .map((match, index) => ({
+      id: Number.parseInt(match.id.replace(/\D/g, "").slice(0, 8), 10) || index + 1,
       fixtureId: match.id,
       sport: match.sport,
       team1: match.homeTeamName,
       team2: match.awayTeamName,
       score: `${match.homeScore}/${match.homeWickets} (${match.homeOvers ?? "0.0"})`,
       stage: match.status,
-      progress: match.status === "Live" ? "In Progress" : "Completed",
+      progress: "In Progress",
       homeOvers: match.homeOvers,
       awayOvers: match.awayOvers,
     }));
-  } catch (error) {
-    console.error("Error fetching live matches:", error);
-    throw error;
-  }
 }
 
 export const fetchLiveTeams = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/teams`);
-    console.log("Fetched live teams:", response.data);
-    return response.data;
-  } catch (e) {
-    console.log(
-      "Error fetching live teams:",
-      axios.isAxiosError(e) ? e.response : undefined,
-    );
-    console.log("Error fetching live teams data:", e);
-  }
+  const data = readLocalAppData();
+  return data.teams.map((team) => ({
+    ...team,
+    sport: {
+      name: team.sportName,
+      description:
+        data.sports.find((sport) => sport.id === team.sportId)?.description ?? "",
+    },
+  }));
 };
 
 export const liveFixtures = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/fixtures/live`);
-    console.log("Fetched live fixtures:", response.data);
-    return response.data;
-  } catch (e) {
-    console.log(
-      "Error fetching live fixtures:",
-      axios.isAxiosError(e) ? e.response : undefined,
-    );
-    console.log("Error fetching live fixtures data:", e);
-  }
+  return readLocalAppData().fixtures;
 };
 
 export async function postCommentary(
   fixtureId: string,
   data: CommentaryRequest,
 ) {
-  const response = await fetch(`${API_URL}/fixtures/${fixtureId}/commentary`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
+  return updateLocalAppData((store) => {
+    const fixture = store.fixtures.find((item) => item.id === fixtureId);
+    if (!fixture) throw new Error("Fixture not found in local data.");
+    const player = store.teams
+      .flatMap((team) => team.players)
+      .find((item) => item.playerId === data.playerId);
+    const side = data.side === 0 ? "Home" : "Away";
+    const entry: CommentaryEntry = {
+      id: createLocalId("commentary"),
+      fixtureId,
+      side,
+      playerId: data.playerId,
+      playerName: player?.playerName ?? "Player",
+      action: getActionName(data.action),
+      note: data.note ?? "",
+      createdAtUtc: new Date().toISOString(),
+      homeScore: fixture.homeScore,
+      homeWickets: fixture.homeWickets,
+      awayScore: fixture.awayScore,
+      awayWickets: fixture.awayWickets,
+      fixtureName: `${fixture.homeTeamName} vs ${fixture.awayTeamName}`,
+      sportName: fixture.sport,
+    };
+    (store.commentaryByFixture[fixtureId] ??= []).unshift(entry);
+    return entry;
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to post commentary: ${response.status} ${errorText}`,
-    );
-  }
-
-  return response.json();
 }
 
 export const updateScoreFixtures = async (
@@ -237,40 +203,34 @@ export const updateScoreFixtures = async (
     bowlerOver?: string;
   },
 ) => {
-  const res = await fetch(`${API_URL}/fixtures/${fixtureId}/score`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
+  return updateLocalAppData((store) => {
+    const fixture = store.fixtures.find((item) => item.id === fixtureId);
+    if (!fixture) throw new Error("Fixture not found in local data.");
+    const home = data.side === 0;
+    const scoreKey = home ? "homeScore" : "awayScore";
+    const wicketKey = home ? "homeWickets" : "awayWickets";
+    const oversKey = home ? "homeOvers" : "awayOvers";
+    fixture[scoreKey] += data.runsDelta ?? 0;
+    fixture[wicketKey] += data.wicketsDelta ?? 0;
+    if (data.overs !== undefined) fixture[oversKey] = data.overs;
+    fixture.battingTeamId = home ? fixture.homeTeamId : fixture.awayTeamId;
+
+    const latest = store.commentaryByFixture[fixtureId]?.[0];
+    if (latest) {
+      latest.homeScore = fixture.homeScore;
+      latest.homeWickets = fixture.homeWickets;
+      latest.awayScore = fixture.awayScore;
+      latest.awayWickets = fixture.awayWickets;
+    }
+
+    return fixture;
   });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to update scores: ${res.status} ${errorText}`);
-  }
-
-  return res.json();
 };
 
 export async function getCommentary(
   fixtureId: string,
 ): Promise<CommentaryEntry[]> {
-  const response = await fetch(`${API_URL}/fixtures/${fixtureId}/commentary`, {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to fetch commentary: ${response.status} ${errorText}`,
-    );
-  }
-
-  return response.json();
+  return readLocalAppData().commentaryByFixture[fixtureId] ?? [];
 }
 
 export const updateCommentary = async (
@@ -278,21 +238,38 @@ export const updateCommentary = async (
   commentaryId: string,
   data: { note: string },
 ) => {
-  const res = await fetch(
-    `${API_URL}/fixtures/${fixtureId}/commentary/${commentaryId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    },
-  );
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to update scores: ${res.status} ${errorText}`);
-  }
-
-  return res.json();
+  return updateLocalAppData((store) => {
+    const entry = store.commentaryByFixture[fixtureId]?.find(
+      (item) => item.id === commentaryId,
+    );
+    if (!entry) throw new Error("Commentary entry not found.");
+    entry.note = data.note;
+    return entry;
+  });
 };
+
+function getActionName(action: number) {
+  const actions: Record<number, string> = {
+    0: "Six",
+    1: "Four",
+    2: "Single",
+    3: "Wicket",
+    4: "Wide",
+    5: "Two",
+    6: "Three",
+    7: "Goal",
+    8: "Assist",
+    9: "Yellow Card",
+    10: "Red Card",
+    11: "Substitution",
+    12: "Penalty",
+    13: "Free Kick",
+    14: "Corner",
+    15: "Offside",
+    16: "Save",
+    17: "No Ball",
+    18: "Byes",
+    19: "Dot Ball",
+  };
+  return actions[action] ?? "Event";
+}

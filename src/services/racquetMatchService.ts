@@ -1,18 +1,12 @@
-import axios from "axios";
-import type { FixtureDetailsDto, FixtureSetScoreDto } from "../components/types/FixtureDetails";
+import type { FixtureSetScoreDto } from "../components/types/FixtureDetails";
+import {
+  readLocalAppData,
+  updateLocalAppData,
+} from "./localAppStore";
+import { advanceSeriesBracket } from "./SeriesService";
+import { assertRacquetSetCanGoLive } from "../utils/localRacquetSports";
 
-// Badminton / Pickleball fixture status, phase and scores, saved on the server
-// (/api/racquet-matches) instead of browser local storage.
-//
-// Screens read synchronously from an in-memory copy (cache) of the server data.
-// The cache is filled from the API, and every change fires the same window events the
-// screens already listen to, so they re-render with the new values.
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-const api = axios.create({
-  baseURL: `${API_BASE_URL}/racquet-matches`,
-  headers: { Accept: "*/*" },
-});
+// Racquet match data is persisted in local storage and mirrored in memory for synchronous reads.
 
 // How often other screens/browsers pick up changes made somewhere else.
 const SYNC_INTERVAL_MS = 5000;
@@ -59,61 +53,53 @@ export interface RacquetMatch {
 const cache = new Map<string, RacquetMatch>();
 
 // When each fixture was last saved from this browser (used to ignore older background reloads).
-const lastSavedAt = new Map<string, number>();
-
 // ---------- Reading (from the cache) ----------
 
 export function getCachedRacquetMatch(fixtureId: string): RacquetMatch | null {
-  return cache.get(fixtureId) ?? null;
+  const cached = cache.get(fixtureId);
+  if (cached) return cached;
+  const match =
+    readLocalAppData().racquetMatches.find((item) => item.fixtureId === fixtureId) ??
+    null;
+  if (match) cache.set(fixtureId, match);
+  return match;
 }
 
 export function getAllCachedRacquetMatches(): RacquetMatch[] {
-  return [...cache.values()];
+  const matches = readLocalAppData().racquetMatches;
+  matches.forEach(putInCache);
+  return matches;
 }
 
-// ---------- Loading from the server ----------
+// ---------- Loading from local storage ----------
 
 let loadAllPromise: Promise<void> | null = null;
 
 // Loads every saved Badminton/Pickleball match into the cache.
 export function loadRacquetMatches(): Promise<void> {
   if (!loadAllPromise) {
-    const startedAt = Date.now();
-    // A fixture saved while this request was running already has newer data in the cache.
-    const savedSinceStart = (fixtureId: string) =>
-      (lastSavedAt.get(fixtureId) ?? 0) >= startedAt;
-
-    loadAllPromise = api
-      .get<RacquetMatch[]>("")
-      .then((response) => {
-        const ids = new Set(response.data.map((match) => match.fixtureId));
-        for (const fixtureId of [...cache.keys()]) {
-          if (!ids.has(fixtureId) && !savedSinceStart(fixtureId)) removeFromCache(fixtureId);
-        }
-        response.data
-          .filter((match) => !savedSinceStart(match.fixtureId))
-          .forEach(putInCache);
-      })
-      .finally(() => {
+    loadAllPromise = Promise.resolve().then(() => {
+      const matches = readLocalAppData().racquetMatches;
+      const ids = new Set(matches.map((match) => match.fixtureId));
+      for (const fixtureId of [...cache.keys()]) {
+        if (!ids.has(fixtureId)) removeFromCache(fixtureId);
+      }
+      matches.forEach(putInCache);
+    }).finally(() => {
         loadAllPromise = null;
       });
   }
   return loadAllPromise;
 }
 
-// Loads one match into the cache. Returns null when it has not been created yet (404).
+// Loads one match into the cache. Returns null when it has not been created yet.
 export async function loadRacquetMatch(fixtureId: string): Promise<RacquetMatch | null> {
-  try {
-    const response = await api.get<RacquetMatch>(`/${fixtureId}`);
-    putInCache(response.data);
-    return response.data;
-  } catch (error: unknown) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
-      removeFromCache(fixtureId);
-      return null;
-    }
-    throw error;
-  }
+  const match =
+    readLocalAppData().racquetMatches.find((item) => item.fixtureId === fixtureId) ??
+    null;
+  if (match) putInCache(match);
+  else removeFromCache(fixtureId);
+  return match;
 }
 
 // Keeps all screens and browsers in sync: reload now and every few seconds.
@@ -133,7 +119,7 @@ export function startRacquetMatchSync() {
   window.addEventListener("focus", sync);
 }
 
-// ---------- Saving to the server ----------
+// ---------- Saving to local storage ----------
 
 // Saves for the same fixture run one after another, so quick clicks never overtake each other.
 const saveQueues = new Map<string, Promise<unknown>>();
@@ -150,21 +136,46 @@ export function saveRacquetMatch(
     .catch(() => undefined)
     .then(async () => {
       const saved = cache.get(fixtureId) ?? (await loadRacquetMatch(fixtureId));
-      const isNew = saved === null;
       const body = change(saved ?? (await newRacquetMatch(fixtureId)));
-
-      try {
-        const response = isNew
-          ? await api.post<RacquetMatch>("", body)
-          : await api.put<RacquetMatch>(`/${fixtureId}`, body);
-        lastSavedAt.set(fixtureId, Date.now());
-        putInCache(response.data);
-        return response.data;
-      } catch (error: unknown) {
-        // Show the server's values again (the save was rejected), then report the reason.
-        await loadRacquetMatch(fixtureId).catch(() => null);
-        throw new Error(getErrorMessage(error));
+      if (
+        saved?.fixture.status.toLowerCase() === "completed" &&
+        body.fixture.status.toLowerCase() === "live"
+      ) {
+        throw new Error("A completed match cannot be set live again.");
       }
+      assertRacquetSetCanGoLive(
+        body.sport,
+        body.fixture.status,
+        body.fixture.phase,
+        body.score.sets,
+      );
+      const stored = updateLocalAppData((data) => {
+        const index = data.racquetMatches.findIndex(
+          (match) => match.fixtureId === fixtureId,
+        );
+        if (index >= 0) data.racquetMatches[index] = body;
+        else data.racquetMatches.push(body);
+
+        const fixture = data.fixtures.find((item) => item.id === fixtureId);
+        if (fixture) {
+          const activeSet = body.score.sets.find(
+            (set) => set.setNumber === body.score.currentSet,
+          );
+          Object.assign(fixture, {
+            status: body.fixture.status,
+            phase: body.fixture.phase,
+            scheduledAtUtc: body.fixture.scheduledAtUtc,
+            battingTeamId: body.fixture.battingTeamId ?? fixture.battingTeamId,
+            winningTeamId: body.fixture.winningTeamId ?? fixture.winningTeamId,
+            homeScore: activeSet?.teamA ?? fixture.homeScore,
+            awayScore: activeSet?.teamB ?? fixture.awayScore,
+          });
+          advanceSeriesBracket(data, fixtureId);
+        }
+        return body;
+      });
+      putInCache(stored);
+      return stored;
     });
 
   saveQueues.set(fixtureId, next);
@@ -172,8 +183,16 @@ export function saveRacquetMatch(
 }
 
 export async function deleteRacquetMatch(fixtureId: string): Promise<void> {
-  await api.delete(`/${fixtureId}`);
+  updateLocalAppData((data) => {
+    data.racquetMatches = data.racquetMatches.filter(
+      (match) => match.fixtureId !== fixtureId,
+    );
+  });
   removeFromCache(fixtureId);
+}
+
+export function clearRacquetMatchCache(fixtureIds: string[]) {
+  fixtureIds.forEach(removeFromCache);
 }
 
 // ---------- Helpers ----------
@@ -203,8 +222,10 @@ function notify(eventName: string, fixtureId: string) {
 
 // First save of a fixture: start from the fixture's current status/phase and 0-0 in all games.
 async function newRacquetMatch(fixtureId: string): Promise<RacquetMatch> {
-  const response = await axios.get<FixtureDetailsDto>(`${API_BASE_URL}/fixtures/${fixtureId}`);
-  const details = response.data;
+  const details = readLocalAppData().fixtures.find(
+    (fixture) => fixture.id === fixtureId,
+  );
+  if (!details) throw new Error("Fixture not found in local data.");
 
   return {
     fixtureId,
@@ -216,7 +237,7 @@ async function newRacquetMatch(fixtureId: string): Promise<RacquetMatch> {
       phaseValue: toPhaseValue(details.phase),
       scheduledAtUtc: details.scheduledAtUtc,
       battingTeamId: null,
-      sportId: details.sportId,
+      sportId: details.sportId ?? "",
       homeTeamId: details.homeTeamId,
       awayTeamId: details.awayTeamId,
       homeTeamName: details.homeTeamName,
@@ -243,15 +264,4 @@ function toPhaseValue(phase?: string | null) {
   if (normalized === "set2" || normalized === "secondset") return 3;
   if (normalized === "set3" || normalized === "thirdset") return 5;
   return 2;
-}
-
-function getErrorMessage(error: unknown) {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as
-      | { detail?: string; errors?: Record<string, string[]> }
-      | undefined;
-    if (data?.errors) return Object.values(data.errors).flat().join(" ");
-    if (data?.detail) return data.detail;
-  }
-  return error instanceof Error ? error.message : "Unable to save the match.";
 }

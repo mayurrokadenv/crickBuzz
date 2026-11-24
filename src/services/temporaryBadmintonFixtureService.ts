@@ -1,6 +1,5 @@
 // Badminton / Pickleball fixture status and phase.
-// Same functions as before, but the data now comes from the server (/api/racquet-matches)
-// through racquetMatchService instead of browser local storage.
+// Racquet fixture state is stored in local storage through racquetMatchService.
 import {
   getAllCachedRacquetMatches,
   getCachedRacquetMatch,
@@ -19,6 +18,7 @@ export interface TemporaryBadmintonFixtureDetails {
   battingTeamId: string | null;
   sport?: string;
   sportId?: string;
+  winningTeamId?: string | null;
   homeTeamId?: string;
   awayTeamId?: string;
   homeTeamName?: string;
@@ -53,8 +53,7 @@ export function getAllTemporaryBadmintonFixtureDetails(): StoredTemporaryBadmint
   }));
 }
 
-// Saves the status (Live, Completed, ...) and phase (Set1/Set2/Set3) on the server.
-// Throws with the server's message when the change is not allowed.
+// Saves the status (Live, Completed, ...) and phase (Set1/Set2/Set3) locally.
 export async function saveTemporaryBadmintonFixtureDetails(
   fixtureId: string,
   details: TemporaryBadmintonFixtureDetails,
@@ -63,8 +62,13 @@ export async function saveTemporaryBadmintonFixtureDetails(
     ...current,
     fixture: {
       ...current.fixture,
+      status: details.status,
+      phase: details.phase,
       statusValue: details.statusValue,
       phaseValue: details.phaseValue,
+      scheduledAtUtc: details.scheduledAtUtc,
+      battingTeamId: details.battingTeamId,
+      winningTeamId: details.winningTeamId,
     },
   }));
 }

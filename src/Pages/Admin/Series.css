@@ -284,6 +284,23 @@
     white-space: nowrap;
 }
 
+.series-card__game {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    color: #ffffff;
+    background: #2563eb;
+    border: 0;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.series-card__game:hover {
+    background: #1d4ed8;
+}
+
 
 .empty-state {
     color: #64748b;

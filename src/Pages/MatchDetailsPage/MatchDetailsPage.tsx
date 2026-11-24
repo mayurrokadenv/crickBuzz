@@ -118,7 +118,7 @@ function MatchDetailsPage() {
       return;
     }
 
-    // Badminton/Pickleball status and phase come from /api/racquet-matches (404 = not saved yet).
+    // Badminton/Pickleball status and phase come from local storage.
     let ignore = false;
     loadRacquetMatch(matchId)
       .catch((error: unknown) => {

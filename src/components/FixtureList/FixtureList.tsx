@@ -14,7 +14,10 @@ import {
   getTemporaryBadmintonFixtureDetails,
   saveTemporaryBadmintonFixtureDetails,
 } from "../../services/temporaryBadmintonFixtureService";
-import { isLocalRacquetSport } from "../../utils/localRacquetSports";
+import {
+  assertRacquetSetCanGoLive,
+  isLocalRacquetSport,
+} from "../../utils/localRacquetSports";
 import { loadRacquetMatches } from "../../services/racquetMatchService";
 
 type EditableFixture = Omit<Fixture, "battingTeamId"> & {
@@ -361,7 +364,7 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
   async function loadFixtures() {
     try {
       const data = await fixtureService.getLiveFixtures();
-      // Badminton/Pickleball status and phase are saved in /api/racquet-matches.
+      // Badminton/Pickleball status and phase are saved in local storage.
       await loadRacquetMatches().catch((error: unknown) =>
         console.error("Failed to load racquet matches", error),
       );
@@ -522,11 +525,59 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
   const isEditableStatus = (status: number) =>
     editableStatuses.includes(status);
 
+  const validateRacquetLiveState = (
+    fixture: EditableFixture,
+    statusValue: number,
+    phaseValue: number,
+  ) => {
+    const score = getTemporaryBadmintonScore(fixture.id);
+    assertRacquetSetCanGoLive(
+      fixture.sport,
+      getStatusName(statusValue),
+      getRacquetPhaseName(phaseValue),
+      score?.sets ??
+        [1, 2, 3].map((setNumber) => ({
+          setNumber,
+          teamA: 0,
+          teamB: 0,
+        })),
+    );
+  };
+
   const handleChange = (
     index: number,
     field: "statusValue" | "phaseValue" | "battingTeamId",
     value: number | string,
   ) => {
+    const currentFixture = fixtures[index];
+    if (currentFixture && isLocalRacquetSport(currentFixture.sport)) {
+      const nextStatusValue =
+        field === "statusValue"
+          ? Number(value)
+          : currentFixture.statusValue;
+      const nextPhaseValue =
+        field === "phaseValue"
+          ? Number(value)
+          : currentFixture.phaseValue;
+      if (nextStatusValue === 1) {
+        try {
+          validateRacquetLiveState(
+            currentFixture,
+            nextStatusValue,
+            nextPhaseValue,
+          );
+        } catch (error: unknown) {
+          showError(
+            "Validation Error",
+            error instanceof Error
+              ? error.message
+              : "Unable to update the racquet match status.",
+          );
+          return;
+        }
+      }
+    }
+
     setFixtures((prev) => {
       const copy = [...prev];
       copy[index] = {
@@ -540,6 +591,11 @@ export default function FixtureList({ refreshKey }: FixtureListProps) {
   const handleSave = async (fixture: EditableFixture) => {
     if (isLocalRacquetSport(fixture.sport)) {
       try {
+        validateRacquetLiveState(
+          fixture,
+          fixture.statusValue,
+          fixture.phaseValue,
+        );
         const localDetails = {
           status: getStatusName(fixture.statusValue),
           phase: getRacquetPhaseName(fixture.phaseValue),

@@ -204,7 +204,7 @@ const loadRolesBySportId = async (
             console.error("Error adding player:", error);
             showError(
                      "Error",
-                     "Failed to add player."
+                     error instanceof Error ? error.message : "Failed to add player."
                    );
         }
     };
