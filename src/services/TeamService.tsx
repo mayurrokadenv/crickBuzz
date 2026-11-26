@@ -1,9 +1,5 @@
+import api from "./fixturesservice";
 import type { ResponseResult } from "./SportService";
-import {
-  createLocalId,
-  readLocalAppData,
-  updateLocalAppData,
-} from "./localAppStore";
 export interface CreateTeamRequest {
     name: string;
     sportId: string;
@@ -65,26 +61,14 @@ function assertUniqueTeamName(
     }
 }
 
-function assertUniquePlayerName(
-    teams: Team[],
-    sportId: string,
-    playerName: string,
-    excludedPlayerId?: string,
-) {
+function assertUniquePlayerName(team: Team, playerName: string, excludedPlayerId?: string) {
     const normalizedName = normalizeName(playerName);
     if (!normalizedName) throw new Error("Player name is required.");
-    if (
-        teams.some(
-            (team) =>
-                team.sportId === sportId &&
-                team.players.some(
-                    (player) =>
-                        player.playerId !== excludedPlayerId &&
-                        normalizeName(player.playerName) === normalizedName,
-                ),
-        )
-    ) {
-        throw new Error("A player with this name already exists in this sport.");
+    if (team.players.some(player =>
+        player.playerId !== excludedPlayerId &&
+        normalizeName(player.playerName) === normalizedName
+    )) {
+        throw new Error("A player with this name already exists on this team.");
     }
 }
 export interface Team {
@@ -125,166 +109,70 @@ export interface UpdateTeamRequest {
 export const createTeam = async (
   request: CreateTeamRequest
 ): Promise<ResponseResult<string>> => {
-    return updateLocalAppData((data) => {
-        const sport = data.sports.find((item) => item.id === request.sportId);
-        if (!sport) throw new Error("The selected sport does not exist.");
-        assertUniqueTeamName(data.teams, sport.id, request.name);
-        if (isRacquetSport(sport.name) && !isTeamFormat(request.format)) {
-            throw new Error("Select a format for Badminton or Pickleball teams.");
-        }
-        const id = createLocalId("team");
-        data.teams.push({
-            id,
-            teamName: request.name.trim(),
-            sportId: sport.id,
-            sportName: sport.name,
-            color: request.colorHex,
-            format: request.format,
-            players: [],
-        });
-        return { success: true, data: id, message: "Team created." };
-    });
+   const { data: sports } = await api.get<{id: string; name: string}[]>("/sports");
+   const sport = sports.find(item => item.id === request.sportId);
+   if (!sport) throw new Error("The selected sport does not exist.");
+   if (isRacquetSport(sport.name) && !isTeamFormat(request.format)) throw new Error("Select a team format.");
+   assertUniqueTeamName(await getTeams(), request.sportId, request.name);
+   return (await api.post<ResponseResult<string>>("/teams", request)).data;
 };
 
 export const getTeams = async (): Promise<Team[]> => {
-    return readLocalAppData().teams;
+   const { data } = await api.get<(Omit<Team, "sportName" | "players"> & {
+     sport: { name: string }; players: Omit<Player, "teamId">[];
+   })[]>("/teams");
+   return data.map(({ sport, players, ...team }) => ({
+     ...team, sportName: sport.name,
+     players: players.map(player => ({ ...player, teamId: team.id })),
+   }));
 };
 
 export const getPlayers = async (teamId?: string): Promise<Player[]> => {
-    return readLocalAppData().teams
-        .filter((team) => !teamId || team.id === teamId)
-        .flatMap((team) => team.players);
+   if (!teamId) return [];
+   return (await getTeams()).find(team => team.id === teamId)?.players ?? [];
 };
 
 export const createPlayer = async (
   request: CreatePlayerRequest
 ): Promise<ResponseResult<string>> => {
-    return updateLocalAppData((data) => {
-        const team = data.teams.find((item) => item.id === request.teamId);
-        if (!team) throw new Error("The selected team does not exist.");
-        const sport = data.sports.find((item) => item.id === team.sportId);
-        if (!sport) throw new Error("The selected sport does not exist.");
-        assertUniquePlayerName(data.teams, sport.id, request.playerName);
-        assertPlayerCapacity(team, sport.name);
-        const role = data.sportRoles.find((item) => item.roleId === request.sportRoleId);
-        if (!role) throw new Error("The selected sport role does not exist.");
-        if (role.sportId !== team.sportId) {
-            throw new Error("The selected role does not belong to this team's sport.");
-        }
-        const playerId = createLocalId("player");
-        team.players.push({
-            playerId,
-            playerName: request.playerName.trim(),
-            role: role.roleName,
-            roleId: role.roleId,
-            teamId: team.id,
-        });
-        return { success: true, data: playerId, message: "Player created." };
-    });
+   const teams = await getTeams();
+   const team = teams.find(item => item.id === request.teamId);
+   if (!team) throw new Error("The selected team does not exist.");
+   assertPlayerCapacity(team, team.sportName);
+   assertUniquePlayerName(team, request.playerName);
+   return (await api.post<ResponseResult<string>>("/players", request)).data;
 };
 
 export const deleteTeam = async (teamId: string): Promise<ResponseResult<boolean>> => {
-    return updateLocalAppData((data) => {
-        const exists = data.teams.some((team) => team.id === teamId);
-        data.teams = data.teams.filter((team) => team.id !== teamId);
-        data.series.forEach((series) => {
-            series.teams = series.teams.filter((team) => team.teamId !== teamId);
-        });
-        const deletedFixtures = data.fixtures.filter(
-            (fixture) => fixture.homeTeamId === teamId || fixture.awayTeamId === teamId,
-        );
-        data.fixtures = data.fixtures.filter(
-            (fixture) => fixture.homeTeamId !== teamId && fixture.awayTeamId !== teamId,
-        );
-        deletedFixtures.forEach((fixture) => {
-            delete data.commentaryByFixture[fixture.id];
-            delete data.scorecardsByFixture[fixture.id];
-        });
-        data.racquetMatches = data.racquetMatches.filter(
-            (match) =>
-                match.fixture.homeTeamId !== teamId &&
-                match.fixture.awayTeamId !== teamId,
-        );
-        return {
-            success: exists,
-            data: exists,
-            message: exists ? "Team deleted." : "Team not found.",
-        };
-    });
+  return (await api.delete<ResponseResult<boolean>>("/teams/" + teamId)).data;
 };
 
 export const deletePlayer = async (
     playerId: string
 ): Promise<ResponseResult<boolean>> => {
-    return updateLocalAppData((data) => {
-        let deleted = false;
-        data.teams.forEach((team) => {
-            const previousLength = team.players.length;
-            team.players = team.players.filter((player) => player.playerId !== playerId);
-            deleted ||= previousLength !== team.players.length;
-        });
-        return {
-            success: deleted,
-            data: deleted,
-            message: deleted ? "Player deleted." : "Player not found.",
-        };
-    });
+  return (await api.delete<ResponseResult<boolean>>("/players/" + playerId)).data;
 };
 
 export const updateTeam = async (
   request: UpdateTeamRequest
 ): Promise<ResponseResult<boolean>> => {
-    return updateLocalAppData((data) => {
-        const team = data.teams.find((item) => item.id === request.id);
-        if (!team) throw new Error("Team not found.");
-        const sport = data.sports.find((item) => item.id === request.sportId);
-        if (!sport) throw new Error("The selected sport does not exist.");
-        assertUniqueTeamName(data.teams, sport.id, request.name, team.id);
-        if (isRacquetSport(sport.name) && team.format && !isTeamFormat(request.format)) {
-            throw new Error("Select a format for Badminton or Pickleball teams.");
-        }
-        if (request.format) {
-            assertPlayerCapacity({ ...team, format: request.format }, sport.name, 0);
-        }
-        team.teamName = request.name.trim();
-        team.sportId = sport.id;
-        team.sportName = sport.name;
-        team.color = request.colorHex;
-        team.format = request.format;
-        return { success: true, data: true, message: "Team updated." };
-    });
+   const teams = await getTeams();
+   const team = teams.find(item => item.id === request.id);
+   if (!team) throw new Error("The selected team does not exist.");
+   assertUniqueTeamName(teams, request.sportId, request.name, team.id);
+   if (team.players.length > getPlayerLimit(team.sportName, request.format ?? team.format))
+     throw new Error("Remove players before switching to this team format.");
+   return (await api.put<ResponseResult<boolean>>("/teams/" + team.id, request)).data;
 };
 
 export const updatePlayer = async (
   request: UpdatelayerRequest
 ): Promise<ResponseResult<boolean>> => {
-    return updateLocalAppData((data) => {
-        const team = data.teams.find((item) => item.id === request.teamId);
-        const player = data.teams
-            .flatMap((item) => item.players)
-            .find((item) => item.playerId === request.playerId);
-        const role = data.sportRoles.find((item) => item.roleId === request.sportRoleId);
-        if (!team || !player || !role) throw new Error("Player, team, or role not found.");
-        if (role.sportId !== team.sportId) {
-            throw new Error("The selected role does not belong to this team's sport.");
-        }
-        const sport = data.sports.find((item) => item.id === team.sportId);
-        if (!sport) throw new Error("The selected sport does not exist.");
-        assertUniquePlayerName(data.teams, sport.id, request.playerName, player.playerId);
-        const previousTeam = data.teams.find((item) =>
-            item.players.some((candidate) => candidate.playerId === request.playerId),
-        );
-        if (previousTeam && previousTeam.id !== team.id) {
-            assertPlayerCapacity(team, sport.name);
-            previousTeam.players = previousTeam.players.filter(
-                (candidate) => candidate.playerId !== request.playerId,
-            );
-            player.teamId = team.id;
-            team.players.push(player);
-        }
-        player.playerName = request.playerName.trim();
-        player.role = role.roleName;
-        player.roleId = role.roleId;
-        return { success: true, data: true, message: "Player updated." };
-    });
+   const teams = await getTeams();
+   const team = teams.find(item => item.id === request.teamId);
+   if (!team) throw new Error("The selected team does not exist.");
+   if (!team.players.some(player => player.playerId === request.playerId))
+     assertPlayerCapacity(team, team.sportName);
+   assertUniquePlayerName(team, request.playerName, request.playerId);
+   return (await api.put<ResponseResult<boolean>>("/players/" + request.playerId, request)).data;
 };

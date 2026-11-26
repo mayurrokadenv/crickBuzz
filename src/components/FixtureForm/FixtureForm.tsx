@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import type { ChangeEvent, FormEvent } from "react";
 import "./FixtureForm.css";
 
-import { getTeams, type Team } from "../../services/TeamService";
+import { getTeams, type Team, type TeamFormat } from "../../services/TeamService";
 import { fixtureService, sportService, type Sport } from "../../services/fixturesservice";
 import { showError, showSuccess } from "../../services/common/AlertService";
-import { getSeries as fetchSeries } from "../../services/SeriesService";
+import { getSeries as fetchSeries } from "../../services/SeriesApi";
 import { useFixtureFeed } from "../../hooks/useFixtureFeed";
 import { useLocation } from "react-router-dom";
-import { isLocalRacquetSport } from "../../utils/localRacquetSports";
 
 // Define Series interface based on your API response
 interface Series {
@@ -16,6 +16,10 @@ interface Series {
     name: string;
     sportId: string;
     sportName: string;
+    format?: TeamFormat | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    bracket?: { isComplete: boolean } | null;
     teams: {
         teamId: string;
         teamName: string;
@@ -43,6 +47,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
     const [sports, setSports] = useState<Sport[]>([]);
     const [series, setSeries] = useState<Series[]>([]); // Added series state
     const [loading, setLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [sportswiseteams, setTeams] = useState<Team[]>([]);
 
     const now = new Date();
@@ -103,14 +108,17 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
     // Filter series based on selected sport
     const filteredSeries = series.filter(s => s.sportId === selectedSport?.id);
     const selectedSeries = series.find((item) => item.id === fixture.seriesId);
+    const isSeriesComplete = selectedSeries?.bracket?.isComplete === true;
     const isAddingNewSeriesTeam = Boolean(
-        isLocalRacquetSport(selectedSeries?.sportName) &&
         selectedSeries &&
         [fixture.home, fixture.away].some(
             (teamId) =>
                 teamId &&
                 !selectedSeries.teams.some((team) => team.teamId === teamId),
         ),
+    );
+    const rebuildsSeriesSchedule = Boolean(
+        isAddingNewSeriesTeam && selectedSeries?.startDate && selectedSeries?.endDate,
     );
 
     useEffect(() => {
@@ -133,7 +141,8 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
     }, [location.search, series, sports]);
 
     const filteredTeams = sportswiseteams.filter(
-        (team) => team.sportId === selectedSport?.id
+        (team) => team.sportId === selectedSport?.id &&
+            (!selectedSeries?.format || team.format === selectedSeries.format)
     );
 
     // Check if the selected sport is cricket (or any sport that needs overs)
@@ -185,6 +194,11 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (isSubmitting) return;
+        if (isSeriesComplete) {
+            showError("Series completed", "The series is complete. Its teams and schedule are locked.");
+            return;
+        }
 
         if (!fixture.home) {
             showError("Validation Error", "Please select the home team.");
@@ -201,26 +215,23 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
             return;
         }
 
-        if (!isAddingNewSeriesTeam && !fixture.scheduledAtUtc) {
-            showError("Validation Error", "Please select a scheduled date and time.");
-            return;
-        }
-
-        if (!isAddingNewSeriesTeam) {
+        let scheduledAtUtc: string | undefined;
+        if (!rebuildsSeriesSchedule) {
             const scheduledDate = new Date(fixture.scheduledAtUtc);
             if (Number.isNaN(scheduledDate.getTime())) {
                 showError("Validation Error", "Please select a valid scheduled date and time.");
                 return;
             }
 
-            if (scheduledDate < new Date()) {
-                showError("Validation Error", "Scheduled date and time cannot be in the past.");
+            if (scheduledDate <= new Date()) {
+                showError("Validation Error", "Scheduled date and time must be in the future.");
                 return;
             }
+            scheduledAtUtc = scheduledDate.toISOString();
         }
 
         // Validate total overs only for cricket.
-        if (isCricket && !isAddingNewSeriesTeam) {
+        if (isCricket && !rebuildsSeriesSchedule) {
             if (!fixture.totalOvers.trim()) {
                 showError("Validation Error", "Please enter total overs.");
                 return;
@@ -235,23 +246,20 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
         const payload = {
             homeTeamId: fixture.home,
             awayTeamId: fixture.away,
-            scheduledAtUtc: isAddingNewSeriesTeam
-                ? undefined
-                : new Date(fixture.scheduledAtUtc).toISOString(),
-            totalOvers: isCricket ? fixture.totalOvers : undefined,
+            scheduledAtUtc,
+            totalOvers: isCricket && !rebuildsSeriesSchedule ? fixture.totalOvers : undefined,
             seriesId: fixture.seriesId || null, // Include seriesId, send null if "None" is selected
         };
 
         console.log("Payload before sending:", payload);
 
+        setIsSubmitting(true);
         try {
-            const result = await fixtureService.createFixture(payload);
-            await showSuccess(
-                result.bracketRebuilt ? "Series schedule rebuilt" : "Success",
-                result.bracketRebuilt
-                    ? `${result.addedTeamCount} team${result.addedTeamCount === 1 ? "" : "s"} added. The bracket schedule was rebuilt.`
-                    : "Fixture scheduled successfully!",
-            );
+            await fixtureService.createFixture(payload);
+            if (selectedSeries) await getSeries();
+            await showSuccess("Success", rebuildsSeriesSchedule
+                ? "Teams added and the series schedule rebuilt."
+                : isAddingNewSeriesTeam ? "Teams added and fixture scheduled." : "Fixture scheduled successfully!");
             onSaved();
             setFixture({
                 sport: sports.length > 0 ? sports[0].name : "",
@@ -262,11 +270,14 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                 totalOvers: "",
             });
         } catch (error: unknown) {
-            console.error("Failed to create fixture locally", error);
+            console.error("Failed to create fixture", error);
             showError(
                 "Error",
-                error instanceof Error ? error.message : "Something went wrong.",
+                (isAxiosError(error) ? error.response?.data?.detail ?? error.response?.data?.title : undefined)
+                    ?? (error instanceof Error ? error.message : "Something went wrong."),
             );
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -298,6 +309,9 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                 {/* New Series Dropdown */}
                 <div className="form-group">
                     <label htmlFor="seriesId">Series</label>
+                    {isSeriesComplete && (
+                        <p role="status">The series is complete. Its teams and schedule are locked.</p>
+                    )}
                     <select
                         id="seriesId"
                         name="seriesId"
@@ -306,8 +320,8 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                     >
                         <option value="">None</option>
                         {filteredSeries.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.name}
+                            <option key={s.id} value={s.id} disabled={s.bracket?.isComplete}>
+                                {s.name}{s.bracket?.isComplete ? " (Completed)" : ""}
                             </option>
                         ))}
                     </select>
@@ -327,7 +341,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                                 .filter(team => team.id !== fixture.away)
                                 .map(team => (
                                     <option key={team.id} value={team.id}>
-                                        {team.teamName}
+                                        {team.teamName}{selectedSeries && !selectedSeries.teams.some(member => member.teamId === team.id) ? " (new to series)" : ""}
                                     </option>
                                 ))}
                         </select>
@@ -346,7 +360,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                                 .filter(team => team.id !== fixture.home)
                                 .map(team => (
                                     <option key={team.id} value={team.id}>
-                                        {team.teamName}
+                                        {team.teamName}{selectedSeries && !selectedSeries.teams.some(member => member.teamId === team.id) ? " (new to series)" : ""}
                                     </option>
                                 ))}
                         </select>
@@ -354,7 +368,7 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                 </div>
 
                 {/* Conditionally render overs field only for cricket */}
-                {isCricket && (
+                {isCricket && !rebuildsSeriesSchedule && (
                     <div className="form-group overs-field">
                         <label htmlFor="totalOvers">Total Overs</label>
                         <input
@@ -370,7 +384,9 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                     </div>
                 )}
 
-                <div className="form-group">
+                {rebuildsSeriesSchedule ? (
+                    <p role="status">The new teams will be enrolled and the bracket will be rebuilt using the series dates.</p>
+                ) : <div className="form-group">
                     <label htmlFor="scheduledAtUtc">Scheduled Date & Time</label>
                     <input
                         type="datetime-local"
@@ -380,13 +396,15 @@ function FixtureForm({ onSaved }: FixtureFormProps) {
                         onChange={handleChange}
                         min={minDateTime}
                     />
-                </div>
+                </div>}
 
                 <button
                     type="submit"
                     className="submit-button"
+                    disabled={isSubmitting || isSeriesComplete}
                 >
-                    + Schedule Fixture
+                    {isSubmitting ? "Scheduling…" : rebuildsSeriesSchedule ? "+ Add Teams & Rebuild Schedule"
+                        : isAddingNewSeriesTeam ? "+ Add Teams & Schedule" : "+ Schedule Fixture"}
                 </button>
             </form>
         </div>

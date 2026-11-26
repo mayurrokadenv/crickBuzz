@@ -1,3 +1,4 @@
+import api from "./fixturesservice";
 import type { CricbuzzMatchDetailsResponse } from "../components/types/CricbuzzLiveMatchInfo";
 import type { CricbuzzMatchItem } from "../components/types/Matches";
 import type { FixtureDetailsDto, TopPerformerDto } from "../components/types/FixtureDetails";
@@ -349,7 +350,7 @@ function toDashboardFixture(
 }
 
 export const getLiveFixtures = async () =>
-  readLocalAppData().fixtures.map(toDashboardFixture);
+  { return (await api.get<DashboardFixture[]>("/fixtures/all")).data; };
 
 export const searchCurrentMatches = async (searchText: string) => {
   const term = searchText.trim().toLowerCase();
@@ -396,41 +397,10 @@ export const getTopPerformers = async (fixtureId: string) =>
   getTopPerformersFromData(fixtureId);
 
 export const searchLiveFixtures = async (searchText: string) => {
-  const term = searchText.trim().toLowerCase();
-  return readLocalAppData().fixtures.filter((fixture) =>
-    `${fixture.sport} ${fixture.homeTeamName} ${fixture.awayTeamName}`
-      .toLowerCase()
-      .includes(term),
-  ).map(toDashboardFixture);
-};
+   const term = searchText.trim().toLowerCase();
+   const fixtures = await getLiveFixtures();
+   return fixtures.filter(fixture =>
+     [fixture.sport, fixture.homeTeamName, fixture.awayTeamName].join(" ").toLowerCase().includes(term));
+ };
 
-export async function getFixtureMatchDetails(fixtureId: string): Promise<FixtureDetailsDto> {
-  const { data, fixture } = getLocalFixture(fixtureId);
-  const commentary = (data.commentaryByFixture[fixtureId] ?? []).map((entry) => ({
-    ...entry,
-    ball: "",
-  }));
-  return {
-    id: fixture.id,
-    homeTeamId: fixture.homeTeamId,
-    homeTeamName: fixture.homeTeamName,
-    awayTeamId: fixture.awayTeamId,
-    awayTeamName: fixture.awayTeamName,
-    sport: fixture.sport,
-    sportId: fixture.sportId ?? "",
-    scheduledAtUtc: fixture.scheduledAtUtc,
-    status: fixture.status,
-    phase: fixture.phase,
-    homeScore: fixture.homeScore,
-    homeWickets: fixture.homeWickets,
-    homeOvers: fixture.homeOvers ?? "0.0",
-    awayScore: fixture.awayScore,
-    awayWickets: fixture.awayWickets,
-    awayOvers: fixture.awayOvers ?? "0.0",
-    totalOvers: fixture.totalOvers ?? "20",
-    winningTeamId: fixture.winningTeamId ?? null,
-    commentary,
-    topPerformers: getTopPerformersFromData(fixtureId),
-    scorecards: data.scorecardsByFixture[fixtureId] ?? [],
-  };
-}
+export async function getFixtureMatchDetails(fixtureId: string): Promise<FixtureDetailsDto> { return (await api.get<FixtureDetailsDto>("/fixtures/" + encodeURIComponent(fixtureId))).data; }

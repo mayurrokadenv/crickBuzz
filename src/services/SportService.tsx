@@ -1,10 +1,4 @@
-import {
-  createLocalId,
-  readLocalAppData,
-  updateLocalAppData,
-} from "./localAppStore";
-
-
+import api from "./fixturesservice";
 export interface ErrorResponse {
   message: string;
   statusCode: number;
@@ -42,56 +36,28 @@ export interface CreateSportRoleRequest{
 }
 
 export const getSports = async (): Promise<Sport[]> => {
-  return readLocalAppData().sports.map(({ id, name, description }) => ({
-    id,
-    name,
-    description,
-  }));
+  return (await api.get<Sport[]>("/sports")).data;
 };
 
 export const createSport = async (
   request: CreateSportRequest
 ): Promise<ResponseResult<string>> => {
-  return updateLocalAppData((data) => {
-    if (data.sports.some((sport) => sport.name.toLowerCase() === request.name.toLowerCase())) {
-      throw new Error("A sport with this name already exists.");
-    }
-    const id = createLocalId("sport");
-    data.sports.push({
-      id,
-      name: request.name,
-      description: request.description,
-      sportRoles: [],
-    });
-    return { success: true, data: id, message: "Sport created." };
-  });
+  return (await api.post<ResponseResult<string>>("/sports", request)).data;
 };
 
 export const getSportRoles = async (): Promise<SportRole[]> => {
-    return readLocalAppData().sportRoles;
+  return (await api.get<SportRole[]>("/sports/roles")).data;
 };
 
 export const getSportRolesBySportId = async (
   sportId: string
 ): Promise<SportRole[]> => {
-  return readLocalAppData().sportRoles.filter((role) => role.sportId === sportId);
+  return (await api.get<SportRole[]>("/sports/" + encodeURIComponent(sportId) + "/roles")).data;
 };
 
 export const createSportRole = async (
   request: CreateSportRoleRequest
 ): Promise<ResponseResult<string>> => {
-  return updateLocalAppData((data) => {
-    const sport = data.sports.find((item) => item.id === request.sportId);
-    if (!sport) throw new Error("The selected sport does not exist.");
-    const roleId = createLocalId("sport-role");
-    const role = { ...request, roleId };
-    data.sportRoles.push(role);
-    sport.sportRoles.push({
-      roleId,
-      roleName: request.roleName,
-      description: request.description,
-    });
-    return { success: true, data: roleId, message: "Sport role created." };
-  });
+  return (await api.post<ResponseResult<string>>("/sports/roles", request)).data;
 };
 

@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getSeriesDetails,
   type SeriesDetails as SeriesDetailsData,
-} from "../../services/SeriesService";
-import { LOCAL_APP_DATA_CHANGED_EVENT } from "../../services/localAppStore";
+} from "../../services/SeriesApi";
+
 import {
   getRacquetRoundMatchCount,
   isLocalRacquetSport,
@@ -144,12 +144,12 @@ function SeriesDetails() {
 
     setIsLoading(true);
     void loadDetails();
-    window.addEventListener(LOCAL_APP_DATA_CHANGED_EVENT, loadDetails);
-    window.addEventListener("storage", loadDetails);
+    window.addEventListener("focus", loadDetails);
+
     return () => {
       active = false;
-      window.removeEventListener(LOCAL_APP_DATA_CHANGED_EVENT, loadDetails);
-      window.removeEventListener("storage", loadDetails);
+      window.removeEventListener("focus", loadDetails);
+
     };
   }, [seriesId]);
 

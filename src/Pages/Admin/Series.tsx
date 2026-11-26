@@ -5,10 +5,12 @@ import {
     createSeries,
     getSeries,
     deleteSeries,
+    getSeriesSports,
+    getSeriesTeams,
     type SeriesFormat,
-} from "../../services/SeriesService";
-import { sportService } from "../../services/fixturesservice";
-import { getTeams, type TeamFormat } from "../../services/TeamService";
+} from "../../services/SeriesApi";
+
+import type { TeamFormat } from "../../services/TeamService";
 import Loader from "../../components/Loader/Loader";
 import { useNavigate } from "react-router-dom";
 
@@ -66,6 +68,7 @@ function Series() {
 
     const [sports, setSports] = useState<Sport[]>([]);
     const [teams, setTeams] = useState<Team[]>([]);
+    const [teamLoadFailed, setTeamLoadFailed] = useState(false);
     const [seriesList, setSeriesList] = useState<SeriesData[]>([]);
     
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -87,7 +90,7 @@ function Series() {
 
     const loadSports = async () => {
         try {
-            const data = await sportService.getSports();
+            const data = await getSeriesSports();
             setSports(data);
         } catch (error) {
             console.error("Error fetching sports:", error);
@@ -116,11 +119,12 @@ function Series() {
 
     const loadTeams = async () => {
         try {
-            const data = await getTeams();
+            const data = await getSeriesTeams();
             const uniqueTeams = deduplicateById<Team>(data, "id");
             setTeams(uniqueTeams);
         } catch (error) {
             console.error("Error fetching teams:", error);
+            setTeamLoadFailed(true);
             showError("Error", "Failed to fetch teams list.");
         }
     };
@@ -149,8 +153,7 @@ function Series() {
     const filteredTeams = teams.filter(
         (team) =>
             team.sportId === sportId &&
-            (!requiresFormat ||
-                (team.format !== undefined && (!format || team.format === format)))
+            (!requiresFormat || (format !== "" && team.format === format))
     );
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -332,6 +335,16 @@ function Series() {
                     <div>
                         <label>SELECT TEAMS * (Minimum 2)</label>
                         <div className="teams-row">
+                            {filteredTeams.length === 0 && (
+                                <span role="status">
+                                    {isLoading ? "Loading teams…"
+                                        : teamLoadFailed ? "Could not load teams from the API."
+                                        : !sportId ? "Choose a sport to see its teams."
+                                        : requiresFormat && !format ? "Choose a format to see eligible teams."
+                                        : requiresFormat ? `No teams are registered for ${format} in this sport.`
+                                        : "No teams are registered for this sport."}
+                                </span>
+                            )}
                             {filteredTeams.map((team) => {
                                 const isSelected = selectedTeamIds.includes(team.id);
                                 return (
@@ -414,18 +427,6 @@ function Series() {
                                     >
                                         View Details
                                     </button>
-
-                                    {["badminton", "pickleball"].includes(series.sportName.toLowerCase()) && (
-                                        <button
-                                            type="button"
-                                            className="series-card__game"
-                                            onClick={() =>
-                                                navigate(`/admin/fixtures?seriesId=${encodeURIComponent(series.id)}`)
-                                            }
-                                        >
-                                            Add Game
-                                        </button>
-                                    )}
 
                                     <button
                                         type="button"

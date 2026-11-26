@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { HubConnectionState } from "@microsoft/signalr";
-import {
-  LOCAL_APP_DATA_CHANGED_EVENT,
-  readLocalAppData,
-} from "../services/localAppStore";
+import { fixtureService } from "../services/fixturesservice";
 
 export interface Fixture {
   id: string;
@@ -44,8 +41,8 @@ export function onFixtureEvent(
   return () => eventHandlers[event].delete(handler);
 }
 
-function readFixtureFeed() {
-  const fixtures = readLocalAppData().fixtures.map((fixture) => ({
+async function readFixtureFeed() {
+  const fixtures = (await fixtureService.getLiveFixtures()).map((fixture) => ({
     ...fixture,
     fixtureId: fixture.id,
     totalOvers: fixture.totalOvers ? Number(fixture.totalOvers) : undefined,
@@ -59,21 +56,25 @@ function readFixtureFeed() {
 }
 
 export function useFixtureFeed() {
-  const [feed, setFeed] = useState(readFixtureFeed);
+  const [feed, setFeed] = useState<Awaited<ReturnType<typeof readFixtureFeed>>>({ fixtures: [], fixturesById: {} });
 
   useEffect(() => {
-    const refresh = () => {
+    let active = true;
+    const refresh = async () => {
       try {
-        setFeed(readFixtureFeed());
+        const next = await readFixtureFeed();
+        if (active) setFeed(next);
       } catch (error: unknown) {
-        console.error("Unable to refresh local fixture feed", error);
+        if (active) console.error("Unable to refresh fixture feed", error);
       }
     };
-    window.addEventListener(LOCAL_APP_DATA_CHANGED_EVENT, refresh);
-    window.addEventListener("storage", refresh);
+    void refresh();
+    const timer = window.setInterval(refresh, 10000);
+    window.addEventListener("crickbuzz-live-feeds-refresh", refresh);
     return () => {
-      window.removeEventListener(LOCAL_APP_DATA_CHANGED_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("crickbuzz-live-feeds-refresh", refresh);
     };
   }, []);
 
